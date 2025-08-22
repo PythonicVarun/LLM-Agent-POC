@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LLM Agent POC</title>
+    <link rel="icon" type="image/x-icon" href="logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <script async src="https://trackerbea.pythonicvarun.me/tracker.js"
+        data-trackerbea-server="https://trackerbea.pythonicvarun.me"
+        data-trackerbea-domain-id="8f0f891c-1017-40b7-ab31-6fa1597863a4"
+        data-trackerbea-opts='{ "detailed": true }'></script>
+    <style>
+        :root {
+            --body-bg: #f5f5f5;
+            --chat-bg: #ffffff;
+            --user-bubble-bg: #0d6efd;
+            --agent-bubble-bg: #e9ecef;
+            --tool-bubble-bg: #f8f9fa;
+            /* Scrollbar theme (match Bootstrap neutrals) */
+            --scrollbar-thumb: #ced4da;
+            --scrollbar-thumb-hover: #adb5bd;
+            --scrollbar-track: var(--chat-bg);
+        }
+
+        body {
+            background-color: var(--body-bg);
+            font-family: "Inter", sans-serif;
+        }
+
+        .chat-container {
+            max-width: 85vw;
+            margin: 2rem auto;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 4rem);
+        }
+
+        .chat-header {
+            background: #ffffff;
+            border-bottom: 1px solid #dee2e6;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #chat-window {
+            flex-grow: 1;
+            background-color: var(--chat-bg);
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message-wrapper {
+            display: flex;
+            gap: 0.75rem;
+            max-width: 100%;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .avatar-user {
+            background-color: var(--user-bubble-bg);
+            color: white;
+        }
+
+        .avatar-agent {
+            background-color: var(--agent-bubble-bg);
+            color: #343a40;
+        }
+
+        .message {
+            padding: 0.75rem 1.25rem;
+            border-radius: 1.25rem;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            background-color: var(--user-bubble-bg);
+            color: white;
+            border-bottom-right-radius: 0.25rem;
+        }
+
+        .agent-message {
+            max-width: 68.5vw;
+            background-color: var(--agent-bubble-bg);
+            color: #212529;
+            overflow-x: auto;
+            border-bottom-left-radius: 0.25rem;
+        }
+
+        .message-wrapper.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message-wrapper.agent {
+            align-self: flex-start;
+        }
+
+        .system-event {
+            /* max-width: 68.5vw; */
+            align-self: center;
+            width: 100%;
+            margin: 0.5rem 0;
+        }
+
+        .tool-message {
+            background-color: var(--tool-bubble-bg);
+            color: #495057;
+            font-family: monospace;
+            font-size: 0.85rem;
+            width: 100%;
+            text-align: center;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            border: 1px solid #dee2e6;
+        }
+
+        .agent-message pre {
+            position: relative;
+            background-color: #212529;
+            color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .tool-calls-final pre {
+            position: relative;
+            background-color: #212529;
+            color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #495057;
+            color: white;
+            border: none;
+            padding: 0.25rem 0.6rem;
+            border-radius: 0.3rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+
+        .agent-message pre:hover .copy-btn {
+            opacity: 1;
+        }
+
+        .chat-composer {
+            padding: 1rem 1.5rem;
+            background-color: #ffffff;
+            border-top: 1px solid #dee2e6;
+        }
+
+        #chat-form {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        #user-input {
+            flex-grow: 1;
+            border-radius: 2rem;
+            padding: 0.6rem 1.2rem;
+            border: 1px solid #ced4da;
+        }
+
+        #submit-button {
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            flex-shrink: 0;
+        }
+
+        .accordion-button:not(.collapsed) {
+            background-color: var(--agent-bubble-bg);
+            color: #212529;
+            box-shadow: none;
+        }
+
+        code[class*=language-],
+        pre[class*=language-] {
+            text-shadow: unset !important;
+        }
+
+        .token.operator {
+            background: unset !important;
+        }
+
+        /* WebKit-based browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--scrollbar-track);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: var(--scrollbar-thumb);
+            border-radius: 10px;
+            border: 2px solid var(--scrollbar-track);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: var(--scrollbar-thumb-hover);
+        }
+
+        ::-webkit-scrollbar-corner {
+            background: transparent;
+        }
+
+        /* Firefox */
+        html {
+            scrollbar-width: thin;
+            scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+        }
+
+        .agent-message {
+            border-collapse: collapse;
+        }
+
+        .agent-message table {
+            margin-bottom: 1rem;
+        }
+
+        .agent-message th,
+        .agent-message td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #000;
+        }
+
+        .agent-message th {
+            background-color: #f4f4f4;
+            font-weight: bold;
+        }
+
+        .agent-message tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .agent-message tbody tr:hover {
+            background-color: #eaeaea;
+        }
+
+        @media only screen and (max-width: 767px) {
+            /* Slightly thinner scrollbars on small screens */
+            ::-webkit-scrollbar {
+                width: 6px;
+                height: 6px;
+            }
+
+            .chat-container {
+                margin: 0rem;
+                height: 100vh;
+                max-width: 100vw;
+                border-radius: 0rem;
+            }
+
+            .message-wrapper.agent {
+                flex-direction: column;
+            }
+
+            .agent-message {
+                max-width: 90vw;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chat-container bg-white">
+        <header class="chat-header">
+            <div>
+                <h4 class="mb-0">🤖 LLM Agent</h4>
+                <p class="text-muted mb-0 small">A browser-based multi-tool agent</p>
+            </div>
+            <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal"
+                data-bs-target="#appSettingsModal">
+                <i class="bi bi-gear-fill"></i>
+            </button>
+        </header>
+
+        <div id="chat-window">
+            <div class="message-wrapper agent">
+                <div class="avatar avatar-agent">🤖</div>
+                <div class="message agent-message">Hello! Please configure your provider and API keys in the
+                    <strong>Settings (⚙️)</strong> menu to get started.
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-composer">
+            <form id="chat-form">
+                <input type="text" id="user-input" class="form-control" placeholder="Type your message..."
+                    autocomplete="off" />
+                <button type="submit" id="submit-button"
+                    class="btn btn-primary fs-5 d-flex align-items-center justify-content-center">➤</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="appSettingsModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Settings</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="agent-tab" data-bs-toggle="tab"
+                                data-bs-target="#agent-tab-pane" type="button">Agent</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="keys-tab" data-bs-toggle="tab" data-bs-target="#keys-tab-pane"
+                                type="button">API Keys</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="provider-tab" data-bs-toggle="tab"
+                                data-bs-target="#provider-tab-pane" type="button">Provider</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content pt-4" id="settingsTabsContent">
+                        <div class="tab-pane fade show active" id="agent-tab-pane">
+                            <div class="mb-3">
+                                <label for="apiModel" class="form-label">Model</label>
+                                <select class="form-select" id="apiModel"></select>
+                                <small class="form-text text-muted">Select a model to use. Fetch models from the
+                                    'Provider' tab.</small>
+                            </div>
+                            <hr />
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="toolsEnabledSwitch" />
+                                <label class="form-check-label" for="toolsEnabledSwitch">Enable Tool Usage</label>
+                            </div>
+                            <small class="form-text text-muted">Allow the agent to use tools like Google Search and Code
+                                Execution.</small>
+                        </div>
+                        <div class="tab-pane fade" id="keys-tab-pane">
+                            <div class="mb-3">
+                                <label for="apiKey" class="form-label">LLM Provider API Key</label>
+                                <input type="password" class="form-control" id="apiKey" placeholder="sk-..." />
+                            </div>
+                            <hr />
+                            <div class="mb-3">
+                                <label for="serperApiKey" class="form-label d-flex justify-content-between">
+                                    <span>Serper API Key (for Google Search)</span>
+                                    <a href="https://serper.dev" target="_blank">Get a free key <i
+                                            class="bi bi-box-arrow-up-right"></i></a>
+                                </label>
+                                <input type="password" class="form-control" id="serperApiKey"
+                                    placeholder="Enter your Serper.dev key" />
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="provider-tab-pane">
+                            <div class="mb-3">
+                                <label for="apiBaseUrl" class="form-label">API Base URL</label>
+                                <input type="text" class="form-control" id="apiBaseUrl"
+                                    placeholder="https://api.openai.com/v1" />
+                                <small class="form-text text-muted">The endpoint for your OpenAI-compatible
+                                    provider.</small>
+                            </div>
+                            <button class="btn btn-primary" type="button" id="saveAndFetchModels">
+                                <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                Fetch Models & Save Provider
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs-okaidia-theme@0.0.1/prism-okaidia.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/plugins/autoloader/prism-autoloader.min.js"></script>
+
+    <script type="module">
+        import { bootstrapAlert } from "https://cdn.jsdelivr.net/npm/bootstrap-alert@1";
+        import { asyncLLM } from "https://cdn.jsdelivr.net/npm/asyncllm@2";
+        import { marked } from "https://cdn.jsdelivr.net/npm/marked@16/+esm";
+        import DOMPurify from "https://cdn.jsdelivr.net/npm/dompurify@3/+esm";
+        import prismjs from 'https://cdn.jsdelivr.net/npm/prismjs@1/+esm';
+
+        async function loadLanguage(language) {
+            try {
+                const module = await import(`https://cdn.jsdelivr.net/npm/prismjs/components/prism-${language}.min.js`);
+                console.debug(`${language} language loaded successfully.`);
+                return module;
+            } catch (err) {
+                console.error(`Failed to load the ${language} language module:`, err);
+            }
+        }
+
+        DOMPurify.addHook("afterSanitizeAttributes", async function (currentNode) {
+            if (currentNode.tagName === "A" && currentNode.hasAttribute("href")) {
+                currentNode.setAttribute("target", "_blank");
+                currentNode.setAttribute("rel", "noopener noreferrer");
+            }
+
+            // if (currentNode.tagName === "PRE") {
+            //     const codeEle = currentNode.querySelector("code");
+            //     if (codeEle && codeEle.hasAttribute("class")) {
+            //         const regex = /language-(\w+)/;
+            //         const language = codeEle.classList.value.match(regex)[1];
+            //         await loadLanguage(language);
+
+            //         codeEle.innerHTML = Prism.highlight(codeEle.innerText, Prism.languages[language], language);
+            //     }
+            // }
+        });
+
+        const chatWindow = document.getElementById("chat-window");
+        const chatForm = document.getElementById("chat-form");
+        const userInput = document.getElementById("user-input");
+
+        const apiBaseUrlEl = document.getElementById("apiBaseUrl");
+        const apiKeyEl = document.getElementById("apiKey");
+        const serperApiKeyEl = document.getElementById("serperApiKey");
+        const apiModelEl = document.getElementById("apiModel");
+        const saveAndFetchModelsBtn = document.getElementById("saveAndFetchModels");
+        const toolsEnabledSwitch = document.getElementById("toolsEnabledSwitch");
+
+        let conversationHistory = [
+            {
+                role: "system",
+                content: `You are a helpful, tool-using AI assistant for a browser chat app.
+
+Primary goals:
+- Be concise, accurate, and actionable.
+- Use Markdown for formatting (headings, bullets, tables, code fences).
+- Prefer step-by-step clarity without fluff.
+
+Tools available:
+- googleSearch(query: string)
+    - Use for up-to-date facts, current events, statistics, or when you are uncertain.
+    - After using it, cite the top 1-3 relevant sources as Markdown links.
+- callAIPipe(pipeline: string)
+    - Use when the user explicitly asks to run a known dataflow/pipeline by name.
+    - If the pipeline is unclear, ask a brief clarifying question.
+- executeJavaScript(code: string)
+    - Use for small calculations, parsing, date time or quick transformations in a sandbox.
+    - Do not access the DOM, or perform destructive actions.
+    - Keep outputs small; summarize longer results.
+
+Tool-use protocol:
+- Call a tool only when it will materially improve the answer.
+- Provide minimal, correct arguments. Never fabricate data or URLs.
+- After tool results return, integrate them into your final answer with citations.
+- Do not print tool-call JSON or internal IDs in your answer.
+
+Style and limits:
+- Keep responses short and impersonal. Avoid filler.
+- Use fenced code blocks with language tags for code.
+- If search is unavailable (e.g., missing API key) or a tool errors, say so briefly and proceed with best-effort reasoning.
+
+Safety:
+- Protect privacy; never request or reveal secrets or API keys.
+
+Identity:
+- Your Name: Anveshak.
+- Your Developer: Varun Agnihotri <@PythonicVarun, code@pythonicvarun.me>`,
+            },
+        ];
+
+        let settings = {};
+
+        const highlightSyntax = async (html) => {
+            const codeBlocks = html.querySelectorAll("pre code[class*='language-']");
+
+            for (const codeEle of codeBlocks) {
+                const regex = /language-(\w+)/;
+                const match = codeEle.className.match(regex);
+                if (match) {
+                    const language = match[1];
+                    try {
+                        await loadLanguage(language);
+
+                        const highlightedCode = Prism.highlight(
+                            codeEle.textContent,
+                            Prism.languages[language],
+                            language
+                        );
+                        codeEle.innerHTML = highlightedCode;
+                    } catch (e) {
+                        console.error(`Failed to highlight language ${language}`, e);
+                    }
+                }
+            }
+
+            return html;
+        }
+
+        function loadSettings() {
+            const savedSettings = JSON.parse(localStorage.getItem("agentSettings")) || {};
+            settings = {
+                baseUrl: savedSettings.baseUrl || "https://api.openai.com/v1",
+                apiKey: savedSettings.apiKey || "",
+                serperApiKey: savedSettings.serperApiKey || "",
+                model: savedSettings.model || "",
+                models: savedSettings.models || [],
+                toolsEnabled: savedSettings.toolsEnabled !== false, // Default: true
+            };
+
+            apiBaseUrlEl.value = settings.baseUrl;
+            apiKeyEl.value = settings.apiKey;
+            serperApiKeyEl.value = settings.serperApiKey;
+            toolsEnabledSwitch.checked = settings.toolsEnabled;
+            populateModelDropdown(settings.models);
+            if (settings.model) apiModelEl.value = settings.model;
+        }
+
+        function saveSettings() {
+            localStorage.setItem("agentSettings", JSON.stringify(settings));
+        }
+
+        function populateModelDropdown(models) {
+            apiModelEl.innerHTML = "";
+            if (models && models.length > 0) {
+                models.forEach((modelName) => {
+                    const option = document.createElement("option");
+                    option.value = modelName;
+                    option.textContent = modelName;
+                    apiModelEl.appendChild(option);
+                });
+                apiModelEl.disabled = false;
+            } else {
+                apiModelEl.innerHTML = "<option>No models found. Fetch first.</option>";
+                apiModelEl.disabled = true;
+            }
+        }
+
+        saveAndFetchModelsBtn.addEventListener("click", async () => {
+            const btnSpinner = saveAndFetchModelsBtn.querySelector(".spinner-border");
+            btnSpinner.classList.remove("d-none");
+            saveAndFetchModelsBtn.disabled = true;
+
+            const baseUrl = apiBaseUrlEl.value.trim();
+            const apiKey = apiKeyEl.value.trim();
+
+            try {
+                if (!apiKey) throw new Error("LLM Provider API Key is required to fetch models.");
+                const response = await fetch(`${baseUrl}/models`, { headers: { Authorization: `Bearer ${apiKey}` } });
+                if (!response.ok) throw new Error("Failed to fetch models. Check URL and API Key.");
+                const data = await response.json();
+                const models = data.data.map((m) => m.id).sort();
+
+                settings.baseUrl = baseUrl;
+                settings.models = models;
+                settings.model = models[0] || "";
+                saveSettings();
+                populateModelDropdown(models);
+                apiModelEl.value = settings.model;
+                bootstrapAlert({ title: "Success", body: `Found ${models.length} models. Settings saved.`, color: "success" });
+            } catch (error) {
+                bootstrapAlert({ title: "Error", body: error.message, color: "danger" });
+            } finally {
+                btnSpinner.classList.add("d-none");
+                saveAndFetchModelsBtn.disabled = false;
+            }
+        });
+
+        apiKeyEl.addEventListener("change", () => {
+            settings.apiKey = apiKeyEl.value.trim();
+            saveSettings();
+        });
+
+        serperApiKeyEl.addEventListener("change", () => {
+            settings.serperApiKey = serperApiKeyEl.value.trim();
+            saveSettings();
+        });
+
+        apiModelEl.addEventListener("change", () => {
+            settings.model = apiModelEl.value;
+            saveSettings();
+        });
+
+        toolsEnabledSwitch.addEventListener("change", () => {
+            settings.toolsEnabled = toolsEnabledSwitch.checked;
+            saveSettings();
+        });
+
+        // Tools
+        async function googleSearch(query) {
+            if (!settings.serperApiKey) {
+                bootstrapAlert({ title: "Configuration Needed", body: "Please set your Serper.dev API key in Settings > API Keys.", color: "warning" });
+                throw new Error("Serper API key not provided.");
+            }
+
+            bootstrapAlert({ body: `Searching Google for: "${query}"`, color: "info" });
+            try {
+                const response = await fetch("https://google.serper.dev/search", {
+                    method: "POST",
+                    headers: { "X-API-KEY": settings.serperApiKey, "Content-Type": "application/json" },
+                    body: JSON.stringify({ q: query }),
+                });
+                if (!response.ok) throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                const data = await response.json();
+                const simplifiedResults = (data.organic || []).slice(0, 5).map((item) => ({ title: item.title, link: item.link, snippet: item.snippet }));
+                return JSON.stringify(simplifiedResults);
+            } catch (error) {
+                bootstrapAlert({ title: "Search Failed", body: error.message, color: "danger" });
+                return JSON.stringify({ error: `An error occurred during search: ${error.message}` });
+            }
+        }
+
+        async function callAIPipe(pipeline, data) {
+            return JSON.stringify({ success: true });
+        }
+
+        async function executeJavaScript(code) {
+            const workerSource = `
+            self.onmessage = async (e) => {
+                const { id, code } = e.data || {};
+
+                const serialize = (obj) => {
+                    try {
+                    const seen = new WeakSet();
+                    return JSON.stringify(obj, function (k, v) {
+                        if (typeof v === 'bigint') return v.toString() + 'n';
+                        if (typeof v === 'function') return '[Function ' + (v.name || 'anonymous') + ']';
+                        if (typeof v === 'symbol') return v.toString();
+                        if (v && typeof v === 'object') {
+                        if (seen.has(v)) return '[Circular]';
+                        seen.add(v);
+                        }
+                        return v;
+                    });
+                    } catch (e) {
+                    return JSON.stringify({ error: 'Could not serialize value' });
+                    }
+                };
+
+                const reply = (payload) => {
+                    try {
+                        const out = { id, type: payload.type };
+                        if (payload.type === 'log') {
+                            out.level = payload.level;
+                            out.args = serialize(payload.args);
+                        } else if (payload.type === 'result') {
+                            out.result = serialize(payload.result);
+                        } else if (payload.type === 'error') {
+                            out.error = serialize(payload.error);
+                        } else {
+                            out.payload = serialize(payload);
+                        }
+                        self.postMessage(out);
+                    } catch (err) {
+                        try {
+                            self.postMessage({ id, type: 'error', error: serialize('postMessage failed: ' + String(err)) });
+                        } catch (_) {
+                            // pass
+                        }
+                    }
+                };
+
+                const consoleProxy = {
+                    log: (...args) => reply({ type: 'log', level: 'log', args }),
+                    info: (...args) => reply({ type: 'log', level: 'info', args }),
+                    warn: (...args) => reply({ type: 'log', level: 'warn', args }),
+                    error: (...args) => reply({ type: 'log', level: 'error', args })
+                };
+
+                try {
+                    // Shadow globals inside evaluated code
+                    const prelude = 'const window=undefined,document=undefined,postMessage=undefined,importScripts=undefined,XMLHttpRequest=undefined,fetch=undefined,WebSocket=undefined,navigator=undefined,location=undefined,localStorage=undefined,sessionStorage=undefined,FileReader=undefined,caches=undefined,globalThis=undefined,self=undefined;';
+
+                    const wrapped = '"use strict";\\n' + prelude + '\\nreturn (async () => { try { return eval(' + JSON.stringify(code || '') + '); } catch (e) { throw e } })()';
+                    const fn = new Function('console', wrapped);
+                    const result = await fn(consoleProxy);
+                    reply({ type: 'result', result });
+                } catch (err) {
+                    reply({ type: 'error', error: err && err.message ? err.message : String(err) });
+                }
+            };
+            `;
+
+            const blobUrl = URL.createObjectURL(new Blob([workerSource], { type: "application/javascript" }));
+            const worker = new Worker(blobUrl);
+            const id = Math.random().toString(36).slice(2);
+            const logs = [];
+
+            const SAFE_JSON = (obj) => {
+                try {
+                    const seen = new WeakSet();
+                    const json = JSON.stringify(obj, (k, v) => {
+                        if (typeof v === 'bigint') return `${v}n`;
+                        if (typeof v === 'function') return `[Function ${v.name || 'anonymous'}]`;
+                        if (typeof v === 'symbol') return v.toString();
+                        if (v && typeof v === 'object') {
+                            if (seen.has(v)) return '[Circular]';
+                            seen.add(v);
+                        }
+                        return v;
+                    });
+                    if (json.length > 4000) {
+                        return JSON.stringify({ truncated: true, length: json.length, preview: json.slice(0, 4000) + '…' });
+                    }
+                    return json;
+                } catch (_) {
+                    return JSON.stringify({ error: 'Result not serializable' });
+                }
+            };
+
+            return await new Promise((resolve) => {
+                let settled = false;
+                const cleanup = () => {
+                    if (!settled) {
+                        settled = true;
+                        worker.terminate();
+                        URL.revokeObjectURL(blobUrl);
+                    }
+                };
+
+                const timeoutMs = 2000;
+                const timer = setTimeout(() => {
+                    cleanup();
+                    resolve(JSON.stringify({ error: 'Execution timed out' }));
+                }, timeoutMs);
+
+                worker.onmessage = (ev) => {
+                    const msg = ev.data || {};
+                    if (msg.id !== id) return;
+
+                    if (msg.type === 'log') {
+                        let args;
+                        try { args = JSON.parse(msg.args); } catch (_) { args = [msg.args]; }
+                        logs.push({ level: msg.level || 'log', args });
+                        return;
+                    }
+
+                    clearTimeout(timer);
+                    cleanup();
+
+                    if (msg.type === 'result') {
+                        let res;
+                        try { res = JSON.parse(msg.result); } catch (_) { res = msg.result; }
+                        resolve(SAFE_JSON({ result: res, logs }));
+                    } else if (msg.type === 'error') {
+                        let err;
+                        try { err = JSON.parse(msg.error); } catch (_) { err = msg.error; }
+                        resolve(SAFE_JSON({ error: err, logs }));
+                    } else {
+                        resolve(SAFE_JSON({ error: 'Unknown worker message', msg, logs }));
+                    }
+                };
+
+                worker.onerror = (err) => {
+                    clearTimeout(timer);
+                    cleanup();
+                    resolve(SAFE_JSON({ error: err.message || 'Worker error', logs }));
+                };
+
+                worker.postMessage({ id, code: String(code || '') });
+            });
+        }
+
+        const availableTools = { googleSearch, callAIPipe, executeJavaScript };
+        const tools = [
+            { type: "function", function: { name: "googleSearch", description: "Search Google for recent results.", parameters: { type: "object", properties: { query: { type: "string" } } } } },
+            { type: "function", function: { name: "callAIPipe", description: "Run a dataflow.", parameters: { type: "object", properties: { pipeline: { type: "string" } } } } },
+            { type: "function", function: { name: "executeJavaScript", description: "Execute JS code.", parameters: { type: "object", properties: { code: { type: "string" } } } } },
+        ];
+
+        async function runConversation() {
+            toggleLoading(true);
+            let messageElement = null,
+                thinkingElement = null,
+                lastEventTools = [],
+                fullReasoningText = "",
+                fullContent = "";
+
+            try {
+                const requestBody = {
+                    model: settings.model,
+                    messages: conversationHistory,
+                    stream: true
+                };
+
+                if (settings.toolsEnabled) {
+                    requestBody.tools = tools;
+                    requestBody.tool_choice = "auto";
+                }
+                const request = {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${settings.apiKey}`
+                    },
+                    body: JSON.stringify(requestBody)
+                };
+
+                for await (const event of asyncLLM(`${settings.baseUrl}/chat/completions`, request)) {
+                    const reasoningDelta = event.message?.choices?.[0]?.delta?.reasoning;
+                    if ((reasoningDelta || event.tools) && !thinkingElement) {
+                        thinkingElement = addThinkingToUI();
+                    }
+
+                    if (reasoningDelta) {
+                        fullReasoningText += reasoningDelta;
+                        const el = thinkingElement.querySelector(".reasoning-stream");
+                        if (el) el.textContent = fullReasoningText;
+                    }
+
+                    if (event.content && !messageElement) {
+                        messageElement = addMessageToUI("", "agent");
+                    }
+
+                    if (messageElement && event.content) {
+                        const cleanFragment = DOMPurify.sanitize(marked.parse(event.content), { RETURN_DOM_FRAGMENT: true });
+                        const html = await highlightSyntax(cleanFragment);
+
+                        messageElement.replaceChildren();
+                        messageElement.appendChild(html);
+                        fullContent = event.content;
+                    }
+
+                    if (event.tools) {
+                        lastEventTools = event.tools;
+                    }
+
+                    if (event.error) throw new Error(JSON.stringify(event.error));
+                    chatWindow.scrollTop = chatWindow.scrollHeight;
+                }
+
+                if (messageElement) {
+                    const cleanFragment = DOMPurify.sanitize(marked.parse(fullContent), { RETURN_DOM_FRAGMENT: true });
+                    const html = await highlightSyntax(cleanFragment);
+
+                    messageElement.replaceChildren();
+                    messageElement.appendChild(html);
+                    messageElement.querySelectorAll("pre").forEach((pre) => {
+                        const btn = document.createElement("button");
+                        btn.className = "copy-btn";
+                        btn.textContent = "Copy";
+                        pre.appendChild(btn);
+                    });
+                }
+
+                const finalToolCalls = lastEventTools.map((t) => ({ id: t.id, type: "function", function: { name: t.name, arguments: t.args } }));
+                const agentResponse = { role: "assistant", content: fullContent, tool_calls: finalToolCalls.length > 0 ? finalToolCalls : undefined };
+                conversationHistory.push(agentResponse);
+
+                if (agentResponse.tool_calls) {
+                    if (thinkingElement) {
+                        const el = thinkingElement.querySelector(".tool-calls-final");
+                        const btn = thinkingElement.querySelector(".accordion-button");
+                        if (el) {
+                            el.querySelector("code").textContent = JSON.stringify(finalToolCalls, null, 4);
+                            el.style.display = "block";
+                            await highlightSyntax(el);
+                        }
+                        if (btn) {
+                            btn.innerHTML = `🧠 Thinking... (Plans to use ${finalToolCalls.length} tool${finalToolCalls.length > 1 ? "s" : ""})`;
+                        }
+                    }
+
+                    for (const toolCall of agentResponse.tool_calls) {
+                        const { name, arguments: args } = toolCall.function;
+                        addMessageToUI(`⚙️ Using tool: <strong>${name}</strong>`, "tool");
+                        const toolOutput = await availableTools[name](...Object.values(JSON.parse(args)));
+                        conversationHistory.push({ tool_call_id: toolCall.id, role: "tool", name, content: toolOutput });
+                    }
+                    await runConversation();
+                } else {
+                    toggleLoading(false);
+                }
+            } catch (error) {
+                bootstrapAlert({ title: "Error", body: error.message, color: "danger" });
+                toggleLoading(false);
+            }
+        }
+
+        chatForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const userText = userInput.value.trim();
+            if (!userText) return;
+
+            if (!settings.apiKey || !settings.model) {
+                bootstrapAlert({ title: "Configuration Needed", body: "Please set your API Key and fetch models in the Settings (⚙️) menu.", color: "warning" });
+                new bootstrap.Modal(document.getElementById("appSettingsModal")).show();
+                return;
+            }
+
+            addMessageToUI(userText, "user");
+            conversationHistory.push({ role: "user", content: userText });
+            userInput.value = "";
+            await runConversation();
+        });
+
+        function addMessageToUI(content, role) {
+            const w = document.createElement("div");
+            if (role === "user" || role === "agent") {
+                w.className = `message-wrapper ${role}`;
+                const a = document.createElement("div");
+                a.className = `avatar avatar-${role}`;
+                a.textContent = role === "user" ? "👤" : "🤖";
+                const m = document.createElement("div");
+                m.className = `message ${role}-message`;
+                m.innerHTML = content;
+                w.appendChild(a);
+                w.appendChild(m);
+                chatWindow.appendChild(w);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+                return m;
+            } else {
+                w.className = "system-event";
+                const m = document.createElement("div");
+                m.className = "tool-message";
+                m.innerHTML = content;
+                w.appendChild(m);
+                chatWindow.appendChild(w);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+                return m;
+            }
+        }
+
+        let accordionCounter = 0;
+        function addThinkingToUI() {
+            accordionCounter++;
+            const id = `accordion-${accordionCounter}`;
+            const html = `
+            <div class="accordion my-2 system-event" id="${id}">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${id}">
+                            🧠 Thinking...
+                        </button>
+                    </h2>
+                    <div id="collapse-${id}" class="accordion-collapse collapse" data-bs-parent="#${id}">
+                        <div class="accordion-body">
+                            <div class="reasoning-stream"></div>
+                            <div class="tool-calls-final" style="display: none;">
+                                <pre><code class="language-json"></code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+            chatWindow.insertAdjacentHTML("beforeend", html);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return document.getElementById(id);
+        }
+
+        chatWindow.addEventListener("click", (e) => {
+            if (e.target.classList.contains("copy-btn")) {
+                const pre = e.target.closest("pre");
+                const code = pre.querySelector("code").textContent;
+                navigator.clipboard.writeText(code).then(() => {
+                    e.target.textContent = "Copied!";
+                    setTimeout(() => {
+                        e.target.textContent = "Copy";
+                    }, 2000);
+                });
+            }
+        });
+
+        function toggleLoading(isLoading) {
+            const btn = document.getElementById("submit-button");
+            userInput.disabled = isLoading;
+            btn.disabled = isLoading;
+            btn.innerHTML = isLoading ? '<span class="spinner-border spinner-border-sm"></span>' : "➤";
+            if (!isLoading) userInput.focus();
+        }
+
+        loadSettings();
+    </script>
+</body>
+
+</html>
