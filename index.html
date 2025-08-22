@@ -101,6 +101,7 @@
             background-color: var(--user-bubble-bg);
             color: white;
             border-bottom-right-radius: 0.25rem;
+            max-width: 68.5vw;
         }
 
         .agent-message {
@@ -309,20 +310,18 @@
                 <h4 class="mb-0">🤖 LLM Agent</h4>
                 <p class="text-muted mb-0 small">A browser-based multi-tool agent</p>
             </div>
-            <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal"
-                data-bs-target="#appSettingsModal">
-                <i class="bi bi-gear-fill"></i>
-            </button>
+            <div class="d-flex align-items-center">
+                <button id="clear-chat-btn" class="btn btn-outline-danger me-2" type="button" title="Clear Chat History">
+                    <i class="bi bi-trash"></i>
+                </button>
+                <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal"
+                    data-bs-target="#appSettingsModal">
+                    <i class="bi bi-gear-fill"></i>
+                </button>
+            </div>
         </header>
 
-        <div id="chat-window">
-            <div class="message-wrapper agent">
-                <div class="avatar avatar-agent">🤖</div>
-                <div class="message agent-message">Hello! Please configure your provider and API keys in the
-                    <strong>Settings (⚙️)</strong> menu to get started.
-                </div>
-            </div>
-        </div>
+        <div id="chat-window"></div>
 
         <div class="chat-composer">
             <form id="chat-form">
@@ -407,6 +406,24 @@
         </div>
     </div>
 
+    <div class="modal fade" id="clearChatModal" tabindex="-1" aria-labelledby="clearChatModalLabel" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="clearChatModalLabel">Clear Chat History</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to clear the chat history? This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmClearChat">Clear History</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs-okaidia-theme@0.0.1/prism-okaidia.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -434,22 +451,12 @@
                 currentNode.setAttribute("target", "_blank");
                 currentNode.setAttribute("rel", "noopener noreferrer");
             }
-
-            // if (currentNode.tagName === "PRE") {
-            //     const codeEle = currentNode.querySelector("code");
-            //     if (codeEle && codeEle.hasAttribute("class")) {
-            //         const regex = /language-(\w+)/;
-            //         const language = codeEle.classList.value.match(regex)[1];
-            //         await loadLanguage(language);
-
-            //         codeEle.innerHTML = Prism.highlight(codeEle.innerText, Prism.languages[language], language);
-            //     }
-            // }
         });
 
         const chatWindow = document.getElementById("chat-window");
         const chatForm = document.getElementById("chat-form");
         const userInput = document.getElementById("user-input");
+        const clearChatBtn = document.getElementById("clear-chat-btn");
 
         const apiBaseUrlEl = document.getElementById("apiBaseUrl");
         const apiKeyEl = document.getElementById("apiKey");
@@ -458,10 +465,9 @@
         const saveAndFetchModelsBtn = document.getElementById("saveAndFetchModels");
         const toolsEnabledSwitch = document.getElementById("toolsEnabledSwitch");
 
-        let conversationHistory = [
-            {
-                role: "system",
-                content: `You are a helpful, tool-using AI assistant for a browser chat app.
+        const systemPrompt = {
+            role: "system",
+            content: `You are a helpful, tool-using AI assistant for a browser chat app.
 
 Primary goals:
 - Be concise, accurate, and actionable.
@@ -479,6 +485,9 @@ Tools available:
     - Use for small calculations, parsing, date time or quick transformations in a sandbox.
     - Do not access the DOM, or perform destructive actions.
     - Keep outputs small; summarize longer results.
+- openInBrowser(url: string)
+    - Use to open a URL in a new browser tab.
+    - Only use it when it's too necessary.
 
 Tool-use protocol:
 - Call a tool only when it will materially improve the answer.
@@ -497,10 +506,80 @@ Safety:
 Identity:
 - Your Name: Anveshak.
 - Your Developer: Varun Agnihotri <@PythonicVarun, code@pythonicvarun.me>`,
-            },
-        ];
+        };
 
+        let conversationHistory = [];
         let settings = {};
+
+        function saveConversationHistory() {
+            localStorage.setItem("conversationHistory", JSON.stringify(conversationHistory));
+        }
+
+        function loadConversationHistory() {
+            const savedHistory = localStorage.getItem("conversationHistory");
+            if (savedHistory) {
+                conversationHistory = JSON.parse(savedHistory);
+                if (conversationHistory.length === 0 || conversationHistory[0].role !== 'system') {
+                    conversationHistory.unshift(systemPrompt);
+                } else {
+                    conversationHistory[0] = systemPrompt; // Always use the latest system prompt
+                }
+            } else {
+                conversationHistory = [systemPrompt];
+            }
+        }
+
+        function displayHistory() {
+            chatWindow.innerHTML = "";
+            const messagesToRender = conversationHistory.slice(1);
+
+            if (messagesToRender.length === 0) {
+                addMessageToUI("Hello! Please configure your provider and API keys in the <strong>Settings (⚙️)</strong> menu to get started.", "agent");
+                return;
+            }
+
+            messagesToRender.forEach(message => {
+                if (message.role === 'user') {
+                    addMessageToUI(message.content, 'user');
+                } else if (message.role === 'assistant' && message.content) {
+                    if (message.reasoning || message.tool_calls) {
+                        const thinkingElement = addThinkingToUI();
+                        if (message.reasoning) {
+                            const reasoningEl = thinkingElement.querySelector(".reasoning-stream");
+                            if (reasoningEl) reasoningEl.textContent = message.reasoning;
+                        }
+
+                        if (message.tool_calls) {
+                            const toolCallsEl = thinkingElement.querySelector(".tool-calls-final");
+                            const btn = thinkingElement.querySelector(".accordion-button");
+                            if (toolCallsEl) {
+                                toolCallsEl.querySelector("code").textContent = JSON.stringify(message.tool_calls, null, 4);
+                                toolCallsEl.style.display = "block";
+                                highlightSyntax(toolCallsEl);
+                            }
+                            if (btn) {
+                                btn.innerHTML = `🧠 Thinking... (Plans to use ${message.tool_calls.length} tool${message.tool_calls.length > 1 ? "s" : ""})`;
+                            }
+                        }
+                    }
+
+                    const messageElement = addMessageToUI("", "agent");
+                    const cleanFragment = DOMPurify.sanitize(marked.parse(message.content), { RETURN_DOM_FRAGMENT: true });
+                    highlightSyntax(cleanFragment).then(html => {
+                        messageElement.appendChild(html);
+                        messageElement.querySelectorAll("pre:not(:has(.copy-btn))").forEach((pre) => {
+                            const btn = document.createElement("button");
+                            btn.className = "copy-btn";
+                            btn.textContent = "Copy";
+                            pre.appendChild(btn);
+                        });
+                    });
+                } else if (message.role === 'tool') {
+                    addMessageToUI(`⚙️ Used tool: <strong>${message.name}</strong>`, "tool");
+                }
+            });
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
 
         const highlightSyntax = async (html) => {
             const codeBlocks = html.querySelectorAll("pre code[class*='language-']");
@@ -792,11 +871,21 @@ Identity:
             });
         }
 
-        const availableTools = { googleSearch, callAIPipe, executeJavaScript };
+        async function openInBrowser(url) {
+            try {
+                window.open(url, '_blank');
+                return JSON.stringify({ success: true, message: "Successfully opened link in the browser." })
+            } catch {
+                return JSON.stringify({ success: false, message: "Failed to open link in the browser." })
+            }
+        }
+
+        const availableTools = { googleSearch, callAIPipe, executeJavaScript, openInBrowser };
         const tools = [
             { type: "function", function: { name: "googleSearch", description: "Search Google for recent results.", parameters: { type: "object", properties: { query: { type: "string" } } } } },
             { type: "function", function: { name: "callAIPipe", description: "Run a dataflow.", parameters: { type: "object", properties: { pipeline: { type: "string" } } } } },
             { type: "function", function: { name: "executeJavaScript", description: "Execute JS code.", parameters: { type: "object", properties: { code: { type: "string" } } } } },
+            { type: "function", function: { name: "openInBrowser", description: "Open a URL in the browser.", parameters: { type: "object", properties: { url: { type: "string" } } } } },
         ];
 
         async function runConversation() {
@@ -808,9 +897,18 @@ Identity:
                 fullContent = "";
 
             try {
+                // Filter messages before sending
+                const messagesToSend = conversationHistory.map(msg => {
+                    if (msg.role === 'assistant' && msg.reasoning) {
+                        const { reasoning, ...messageWithoutReasoning } = msg;
+                        return messageWithoutReasoning;
+                    }
+                    return msg;
+                });
+
                 const requestBody = {
                     model: settings.model,
-                    messages: conversationHistory,
+                    messages: messagesToSend,
                     stream: true
                 };
 
@@ -875,8 +973,14 @@ Identity:
                 }
 
                 const finalToolCalls = lastEventTools.map((t) => ({ id: t.id, type: "function", function: { name: t.name, arguments: t.args } }));
-                const agentResponse = { role: "assistant", content: fullContent, tool_calls: finalToolCalls.length > 0 ? finalToolCalls : undefined };
+                const agentResponse = {
+                    role: "assistant",
+                    content: fullContent,
+                    tool_calls: finalToolCalls.length > 0 ? finalToolCalls : undefined,
+                    reasoning: fullReasoningText || undefined
+                };
                 conversationHistory.push(agentResponse);
+                saveConversationHistory();
 
                 if (agentResponse.tool_calls) {
                     if (thinkingElement) {
@@ -897,6 +1001,7 @@ Identity:
                         addMessageToUI(`⚙️ Using tool: <strong>${name}</strong>`, "tool");
                         const toolOutput = await availableTools[name](...Object.values(JSON.parse(args)));
                         conversationHistory.push({ tool_call_id: toolCall.id, role: "tool", name, content: toolOutput });
+                        saveConversationHistory();
                     }
                     await runConversation();
                 } else {
@@ -921,6 +1026,7 @@ Identity:
 
             addMessageToUI(userText, "user");
             conversationHistory.push({ role: "user", content: userText });
+            saveConversationHistory();
             userInput.value = "";
             await runConversation();
         });
@@ -934,7 +1040,11 @@ Identity:
                 a.textContent = role === "user" ? "👤" : "🤖";
                 const m = document.createElement("div");
                 m.className = `message ${role}-message`;
-                m.innerHTML = content;
+                if (role === 'user') {
+                    m.innerHTML = DOMPurify.sanitize(marked.parseInline(content));
+                } else {
+                    m.innerHTML = content;
+                }
                 w.appendChild(a);
                 w.appendChild(m);
                 chatWindow.appendChild(w);
@@ -992,6 +1102,18 @@ Identity:
             }
         });
 
+        clearChatBtn.addEventListener("click", () => {
+            const clearChatModal = new bootstrap.Modal(document.getElementById("clearChatModal"));
+            clearChatModal.show();
+        });
+
+        document.getElementById("confirmClearChat").addEventListener("click", () => {
+            conversationHistory = [systemPrompt];
+            saveConversationHistory();
+            displayHistory();
+            bootstrap.Modal.getInstance(document.getElementById("clearChatModal")).hide();
+        });
+
         function toggleLoading(isLoading) {
             const btn = document.getElementById("submit-button");
             userInput.disabled = isLoading;
@@ -1001,6 +1123,8 @@ Identity:
         }
 
         loadSettings();
+        loadConversationHistory();
+        displayHistory();
     </script>
 </body>
 
