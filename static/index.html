@@ -218,6 +218,17 @@
                                     Data
                                 </button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button
+                                    class="nav-link"
+                                    id="tests-tab"
+                                    data-bs-toggle="tab"
+                                    data-bs-target="#tests-tab-pane"
+                                    type="button"
+                                >
+                                    Tests
+                                </button>
+                            </li>
                         </ul>
                         <div class="tab-content pt-4" id="settingsTabsContent">
                             <div
@@ -267,6 +278,30 @@
                                         id="apiKey"
                                         placeholder="sk-..."
                                     />
+                                </div>
+                                <hr />
+                                <div class="mb-3">
+                                    <label for="aipipeApiKey" class="form-label d-flex justify-content-between">
+                                        <span>AI Pipe Token</span>
+                                        <a
+                                            href="https://aipipe.org/login"
+                                            target="_blank"
+                                        >
+                                            Get token
+                                            <i class="bi bi-box-arrow-up-right"></i>
+                                        </a>
+                                    </label>
+                                    <input
+                                        type="password"
+                                        class="form-control"
+                                        id="aipipeApiKey"
+                                        placeholder="Paste your AI Pipe token"
+                                    />
+                                    <small class="form-text text-muted">
+                                        Used by the built-in AI Pipe tool
+                                        (usage, similarity, OpenAI/OpenRouter/Gemini via aipipe.org).
+                                        If empty, we'll try to detect a token from your AI Pipe session.
+                                    </small>
                                 </div>
                                 <hr />
                                 <div class="mb-3">
@@ -397,6 +432,68 @@
                                         style="display: none"
                                     >
                                         No memories saved yet.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="tests-tab-pane">
+                                <div class="mb-4">
+                                    <h6 class="mb-2">AI Pipe</h6>
+                                    <p class="text-muted small">
+                                        Use these to quickly verify your
+                                        AI Pipe token/session.
+                                    </p>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <button
+                                            class="btn btn-outline-primary"
+                                            type="button"
+                                            id="aipipeTestUsageBtn"
+                                        >
+                                            Test /usage
+                                        </button>
+                                        <button
+                                            class="btn btn-outline-secondary"
+                                            type="button"
+                                            id="aipipeTestProxyBtn"
+                                        >
+                                            Test Proxy httpbin
+                                        </button>
+                                    </div>
+                                </div>
+                                <hr />
+                                <div class="mb-4">
+                                    <h6 class="mb-2">Serper (Google Search)</h6>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <button
+                                            class="btn btn-outline-secondary"
+                                            type="button"
+                                            id="serperTestBtn"
+                                        >
+                                            Test Serper Search
+                                        </button>
+                                        <small
+                                            class="form-text text-muted"
+                                        >
+                                            Runs a quick search to verify your key.
+                                        </small>
+                                    </div>
+                                </div>
+                                <hr />
+                                <div class="mb-2">
+                                    <h6 class="mb-2">Provider (OpenAI-compatible)</h6>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <button
+                                            class="btn btn-outline-secondary"
+                                            type="button"
+                                            id="providerTestModelsBtn"
+                                        >
+                                            Test List Models
+                                        </button>
+                                        <small
+                                            class="form-text text-muted"
+                                        >
+                                            Calls GET /models on your configured
+                                            base URL with your API key.
+                                        </small>
                                     </div>
                                 </div>
                             </div>

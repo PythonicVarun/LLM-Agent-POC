@@ -30,6 +30,7 @@ const clearChatBtn = document.getElementById("clear-chat-btn");
 
 const apiBaseUrlEl = document.getElementById("apiBaseUrl");
 const apiKeyEl = document.getElementById("apiKey");
+const aipipeApiKeyEl = document.getElementById("aipipeApiKey");
 const serperApiKeyEl = document.getElementById("serperApiKey");
 const apiModelEl = document.getElementById("apiModel");
 const saveAndFetchModelsBtn = document.getElementById("saveAndFetchModels");
@@ -51,9 +52,10 @@ Tools available:
 - googleSearch(query: string)
     - Use for up-to-date facts, current events, statistics, or when you are uncertain.
     - After using it, cite the top 1-3 relevant sources as Markdown links.
-- callAIPipe(pipeline: string)
-    - Use when the user explicitly asks to run a known dataflow/pipeline by name.
-    - If the pipeline is unclear, ask a brief clarifying question.
+- callAIPipe(pipeline: string, data?: object)
+    - Use for AI Pipe dataflows and proxies.
+    - Supported shorthands: "usage", "similarity", "proxy:<url>", "openai:<...>", "openrouter:<...>", "gemini:<...>".
+    - Provide POST payloads via 'data'. If the pipeline is unclear, ask a concise clarifying question.
 - executeJavaScript(code: string)
     - Use for small calculations, parsing, date time or quick transformations in a sandbox.
     - Do not access the DOM, or perform destructive actions.
@@ -450,6 +452,7 @@ function loadSettings() {
     settings = {
         baseUrl: savedSettings.baseUrl || "https://api.openai.com/v1",
         apiKey: savedSettings.apiKey || "",
+        aipipeApiKey: savedSettings.aipipeApiKey || "",
         serperApiKey: savedSettings.serperApiKey || "",
         model: savedSettings.model || "",
         models: savedSettings.models || [],
@@ -458,6 +461,7 @@ function loadSettings() {
 
     apiBaseUrlEl.value = settings.baseUrl;
     apiKeyEl.value = settings.apiKey;
+    if (aipipeApiKeyEl) aipipeApiKeyEl.value = settings.aipipeApiKey;
     serperApiKeyEl.value = settings.serperApiKey;
     toolsEnabledSwitch.checked = settings.toolsEnabled;
     populateModelDropdown(settings.models);
@@ -533,6 +537,13 @@ apiKeyEl.addEventListener("change", () => {
     saveSettings();
 });
 
+if (aipipeApiKeyEl) {
+    aipipeApiKeyEl.addEventListener("change", () => {
+        settings.aipipeApiKey = aipipeApiKeyEl.value.trim();
+        saveSettings();
+    });
+}
+
 serperApiKeyEl.addEventListener("change", () => {
     settings.serperApiKey = serperApiKeyEl.value.trim();
     saveSettings();
@@ -595,7 +606,178 @@ async function googleSearch(query) {
 }
 
 async function callAIPipe(pipeline, data) {
-    return JSON.stringify({ success: true });
+    const AIPIPE_BASE = "https://aipipe.org";
+
+    const safeStringify = (obj, limit = 8000) => {
+        try {
+            const json = JSON.stringify(obj);
+            if (json.length > limit) {
+                return JSON.stringify({
+                    truncated: true,
+                    length: json.length,
+                    preview: json.slice(0, limit) + "…",
+                });
+            }
+            return json;
+        } catch (e) {
+            return JSON.stringify({ error: `Could not serialize: ${String(e)}` });
+        }
+    };
+
+    const getAIPipeToken = async () => {
+        // Prefer explicitly set AI Pipe token
+        if (settings.aipipeApiKey) return settings.aipipeApiKey;
+        // Else, if baseUrl points to aipipe, use provider apiKey
+        try {
+            const url = (settings.baseUrl || "").toLowerCase();
+            if (url.includes("aipipe.org")) return settings.apiKey || null;
+        } catch (_) {
+            // ignore
+        }
+        try {
+            const mod = await import("https://aipipe.org/aipipe.js");
+            const { token } = mod.getProfile?.() || {};
+            return token || null;
+        } catch (_) {
+            return null;
+        }
+    };
+
+    try {
+        if (!pipeline || typeof pipeline !== "string") {
+            throw new Error("Expected 'pipeline' to be a non-empty string.");
+        }
+
+        const p = pipeline.trim();
+        const needsAuth = (path) => !path.startsWith("/proxy/");
+
+        // Resolve endpoint and method/body from shorthand
+        let method = "GET";
+        let url = "";
+        let body = null;
+        let headers = { "Content-Type": "application/json" };
+
+        // Support direct URL via proxy
+        if (/^https?:\/\//i.test(p) || p.toLowerCase().startsWith("proxy:")) {
+            const raw = p.toLowerCase().startsWith("proxy:") ? p.slice(6) : p;
+            url = `${AIPIPE_BASE}/proxy/${raw}`;
+            method = "GET";
+        } else if (p.toLowerCase() === "usage") {
+            url = `${AIPIPE_BASE}/usage`;
+        } else if (p.toLowerCase().startsWith("openai:")) {
+            const resource = p.split(":")[1] || "models";
+            if (resource === "models") {
+                url = `${AIPIPE_BASE}/openai/v1/models`;
+            } else if (resource === "responses") {
+                url = `${AIPIPE_BASE}/openai/v1/responses`;
+                method = "POST";
+                body = data && typeof data === "object" ? data : { model: "gpt-4.1-nano", input: "ping" };
+            } else if (resource === "embeddings") {
+                url = `${AIPIPE_BASE}/openai/v1/embeddings`;
+                method = "POST";
+                body = data && typeof data === "object" ? data : { model: "text-embedding-3-small", input: "ping" };
+            } else {
+                // Allow arbitrary path after openai:
+                const path = resource.replace(/^\//, "");
+                url = `${AIPIPE_BASE}/openai/v1/${path}`;
+                method = data ? "POST" : "GET";
+                body = data || null;
+            }
+        } else if (p.toLowerCase().startsWith("openrouter:")) {
+            const resource = p.split(":")[1] || "v1/models";
+            if (resource === "models") {
+                url = `${AIPIPE_BASE}/openrouter/v1/models`;
+            } else if (resource === "chat" || resource === "chat.completions") {
+                url = `${AIPIPE_BASE}/openrouter/v1/chat/completions`;
+                method = "POST";
+                body = data && typeof data === "object" ? data : {
+                    model: "openai/gpt-4o-mini",
+                    messages: [{ role: "user", content: "What is 2 + 2?" }],
+                };
+            } else {
+                const path = resource.replace(/^\//, "");
+                url = `${AIPIPE_BASE}/openrouter/${path}`;
+                method = data ? "POST" : "GET";
+                body = data || null;
+            }
+        } else if (p.toLowerCase().startsWith("gemini:")) {
+            const resource = p.split(":")[1] || "models";
+            if (resource === "models") {
+                // Listing is not standardized here; default to a known model info endpoint
+                url = `${AIPIPE_BASE}/geminiv1beta/models`;
+            } else if (resource.toLowerCase().includes(":generatecontent")) {
+                url = `${AIPIPE_BASE}/geminiv1beta/${resource}`;
+                method = "POST";
+                body = data && typeof data === "object" ? data : {
+                    contents: [{ parts: [{ text: "What is 2 + 2?" }] }],
+                };
+            } else if (resource.toLowerCase().includes(":embedcontent")) {
+                url = `${AIPIPE_BASE}/geminiv1beta/${resource}`;
+                method = "POST";
+                body = data && typeof data === "object" ? data : {
+                    model: "gemini-embedding-001",
+                    content: { parts: [{ text: "What is 2 + 2?" }] },
+                };
+            } else {
+                const path = resource.replace(/^\//, "");
+                url = `${AIPIPE_BASE}/geminiv1beta/${path}`;
+                method = data ? "POST" : "GET";
+                body = data || null;
+            }
+        } else if (p.toLowerCase() === "similarity") {
+            url = `${AIPIPE_BASE}/similarity`;
+            method = "POST";
+            if (!data || typeof data !== "object") {
+                throw new Error(
+                    "'data' object is required for the 'similarity' pipeline (e.g., { docs: [...], topics: [...] }).",
+                );
+            }
+            body = data;
+        } else {
+            throw new Error(
+                "Unknown pipeline. Supported: usage, proxy:<url>, similarity, openai:<models|responses|...>, openrouter:<models|chat|...>, gemini:<models|...>.",
+            );
+        }
+
+        // Attach Authorization header if needed
+        if (needsAuth(new URL(url).pathname)) {
+            const token = await getAIPipeToken();
+            if (!token) {
+                bootstrapAlert({
+                    title: "AIPipe Token Required",
+                    body: 'To call AI Pipe, either set your API Base URL to aipipe.org in Settings and paste your token as API Key, or log in at <a href="https://aipipe.org/login" target="_blank" rel="noopener">aipipe.org/login</a>.',
+                    color: "warning",
+                });
+                throw new Error("Missing AI Pipe token");
+            }
+            headers = { ...headers, Authorization: `Bearer ${token}` };
+        }
+
+        bootstrapAlert({ body: `Running AI Pipe: ${p}`, color: "info" });
+        const resp = await fetch(url, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : undefined,
+        });
+
+        const contentType = resp.headers.get("content-type") || "";
+        let out;
+        if (contentType.includes("application/json")) {
+            out = await resp.json();
+        } else {
+            out = { text: await resp.text() };
+        }
+
+        if (!resp.ok) {
+            const errMsg = out?.error || resp.statusText || `HTTP ${resp.status}`;
+            throw new Error(typeof errMsg === "string" ? errMsg : JSON.stringify(errMsg));
+        }
+
+        return safeStringify({ pipeline: p, status: resp.status, data: out });
+    } catch (error) {
+        bootstrapAlert({ title: "AI Pipe Error", body: String(error?.message || error), color: "danger" });
+        return safeStringify({ error: String(error?.message || error) });
+    }
 }
 
 async function executeJavaScript(code) {
@@ -841,7 +1023,15 @@ const tools = [
             description: "Run a dataflow.",
             parameters: {
                 type: "object",
-                properties: { pipeline: { type: "string" } },
+                properties: {
+                    pipeline: { type: "string" },
+                    data: {
+                        type: "object",
+                        description:
+                            "Optional payload for the pipeline (e.g., body for POST).",
+                    },
+                },
+                required: ["pipeline"],
             },
         },
     },
@@ -1077,9 +1267,24 @@ ${memoryStrings}
                     `⚙️ Using tool: <strong>${name}</strong>`,
                     "tool",
                 );
-                const toolOutput = await availableTools[name](
-                    ...Object.values(JSON.parse(args)),
-                );
+                let toolOutput;
+                try {
+                    const parsedArgs = JSON.parse(args || "{}");
+                    if (name === "callAIPipe") {
+                        toolOutput = await availableTools[name](
+                            parsedArgs.pipeline,
+                            parsedArgs.data,
+                        );
+                    } else {
+                        toolOutput = await availableTools[name](
+                            ...Object.values(parsedArgs),
+                        );
+                    }
+                } catch (e) {
+                    toolOutput = JSON.stringify({
+                        error: `Failed to execute tool ${name}: ${e?.message || e}`,
+                    });
+                }
                 conversationHistory.push({
                     tool_call_id: toolCall.id,
                     role: "tool",
@@ -1402,6 +1607,74 @@ document
 
 document.getElementById("data-tab").addEventListener("click", () => {
     updateStorageInfo();
+});
+
+// AI Pipe quick tests
+document.getElementById("aipipeTestUsageBtn")?.addEventListener("click", async () => {
+    const res = await callAIPipe("usage");
+    try {
+        const parsed = JSON.parse(res);
+        bootstrapAlert({
+            title: "AI Pipe /usage",
+            body: `<pre class=\"mb-0\"><code>${DOMPurify.sanitize(JSON.stringify(parsed, null, 2))}</code></pre>`,
+            color: parsed.error ? "danger" : "success",
+        });
+    } catch {
+        bootstrapAlert({ title: "AI Pipe /usage", body: String(res), color: "danger" });
+    }
+});
+
+document.getElementById("aipipeTestProxyBtn")?.addEventListener("click", async () => {
+    const res = await callAIPipe("proxy:https://httpbin.org/get?hello=world");
+    try {
+        const parsed = JSON.parse(res);
+        bootstrapAlert({
+            title: "AI Pipe Proxy",
+            body: `<pre class=\"mb-0\"><code>${DOMPurify.sanitize(JSON.stringify(parsed, null, 2))}</code></pre>`,
+            color: parsed.error ? "danger" : "success",
+        });
+    } catch {
+        bootstrapAlert({ title: "AI Pipe Proxy", body: String(res), color: "danger" });
+    }
+});
+
+// Serper quick test
+document.getElementById("serperTestBtn")?.addEventListener("click", async () => {
+    try {
+        const res = await googleSearch("OpenAI");
+        const parsed = JSON.parse(res);
+        bootstrapAlert({
+            title: "Serper Search",
+            body: `<pre class=\"mb-0\"><code>${DOMPurify.sanitize(JSON.stringify(parsed, null, 2))}</code></pre>`,
+            color: parsed.error ? "danger" : "success",
+        });
+    } catch (e) {
+        bootstrapAlert({ title: "Serper Search", body: String(e?.message || e), color: "danger" });
+    }
+});
+
+// Provider quick test
+document.getElementById("providerTestModelsBtn")?.addEventListener("click", async () => {
+    try {
+        const baseUrl = (settings.baseUrl || "").replace(/\/$/, "");
+        const apiKey = settings.apiKey || "";
+        if (!baseUrl || !apiKey) {
+            bootstrapAlert({ title: "Provider Test", body: "Please set both API Base URL and LLM Provider API Key in Settings.", color: "warning" });
+            return;
+        }
+        const resp = await fetch(`${baseUrl}/models`, { headers: { Authorization: `Bearer ${apiKey}` } });
+        const contentType = resp.headers.get("content-type") || "";
+        let out;
+        if (contentType.includes("application/json")) out = await resp.json();
+        else out = { text: await resp.text() };
+        bootstrapAlert({
+            title: resp.ok ? "Provider /models" : `Provider Error (${resp.status})`,
+            body: `<pre class=\"mb-0\"><code>${DOMPurify.sanitize(JSON.stringify(out, null, 2))}</code></pre>`,
+            color: resp.ok ? "success" : "danger",
+        });
+    } catch (e) {
+        bootstrapAlert({ title: "Provider Test", body: String(e?.message || e), color: "danger" });
+    }
 });
 
 function toggleLoading(isLoading) {
