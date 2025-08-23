@@ -97,6 +97,7 @@
 
         .chat-item-btn {
             width: 100%;
+            max-width: 13.15rem;
             text-align: left;
             border: none;
             background: transparent;
@@ -848,11 +849,10 @@ Tools available:
     - Use to open a URL in a new browser tab.
     - Only use it when it's too necessary.
 - addToMemory(memory: string)
-    - Save a memory string to persistent storage.
-    - Can be used to remember important information across sessions like user preferences, past interactions, or specific details the user wants to remember.
+    - Use to save concise, user-specified facts for long-term recall (e.g., "My favorite framework is React"). Do not add memories for trivial details.
 - getMemories(): string[]
-    - Retrieve all saved memory strings.
-    - Can be used to recall important information across sessions like user preferences, past interactions, or specific details the user wants to remember.
+    - **Your memories are already in your context.** Do not call this tool to check them.
+    - Only use this if the user explicitly asks you to list all saved memories.
 
 Tool-use protocol:
 - Call a tool only when it will materially improve the answer.
@@ -1005,15 +1005,17 @@ Identity:
         function clearAllChats() {
             // Clear all chats and create a new default one
             chats = {};
-            const newChatId = createNewChat();
-            activeChat = newChatId;
-            isDraftChat = false;
-            conversationHistory = [...chats[newChatId].history];
+            // const newChatId = createNewChat();
+            // activeChat = newChatId;
+            // isDraftChat = false;
+            // conversationHistory = [...chats[newChatId].history];
 
-            // Update UI
-            updateChatList();
-            updateChatTitle();
-            displayHistory();
+            // // Update UI
+            // updateChatList();
+            // updateChatTitle();
+            // displayHistory();
+
+            startDraftChat();
             saveAllChats();
             updateStorageInfo();
 
