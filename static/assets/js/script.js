@@ -1199,6 +1199,10 @@ chatForm.addEventListener("submit", async (e) => {
     conversationHistory.push({ role: "user", content: userText });
     saveAllChats();
     userInput.value = "";
+    if (userInput && userInput.tagName === "TEXTAREA") {
+        // Collapse to one row after clearing
+        userInput.style.height = "auto";
+    }
     await runConversation();
 });
 
@@ -1212,7 +1216,9 @@ function addMessageToUI(content, role) {
         const m = document.createElement("div");
         m.className = `message ${role}-message`;
         if (role === "user") {
-            m.innerHTML = DOMPurify.sanitize(marked.parseInline(content));
+            m.innerHTML = DOMPurify.sanitize(
+                marked.parse(content, { breaks: true })
+            );
         } else {
             m.innerHTML = content;
         }
@@ -1406,6 +1412,23 @@ function toggleLoading(isLoading) {
         ? '<span class="spinner-border spinner-border-sm"></span>'
         : "➤";
     if (!isLoading) userInput.focus();
+}
+
+function autosizeTextarea(el) {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+}
+
+if (userInput && userInput.tagName === "TEXTAREA") {
+    autosizeTextarea(userInput);
+    userInput.addEventListener("input", () => autosizeTextarea(userInput));
+    userInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            document.getElementById("chat-form")?.requestSubmit();
+        }
+    });
 }
 
 function renderMemoryList() {

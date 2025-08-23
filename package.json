@@ -36,6 +36,6 @@
         "minify": "^14.1.0",
         "prettier": "^3.6.2",
         "uglify-js": "^3.19.3",
-        "wrangler": "^4.32.0"
+        "wrangler": "^4.33.0"
     }
 }

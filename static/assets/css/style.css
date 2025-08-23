@@ -316,6 +316,20 @@ body {
     border-radius: 2rem;
     padding: 0.6rem 1.2rem;
     border: 1px solid #ced4da;
+    resize: none;
+    max-height: 35vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    scrollbar-width: none; /* Firefox */
+}
+
+#user-input::-webkit-scrollbar {
+    width: 0;
+    height: 0;
 }
 
 #submit-button {
