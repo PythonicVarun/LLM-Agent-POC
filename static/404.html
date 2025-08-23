@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>404 - Page Not Found</title>
+    <link rel="icon" type="image/x-icon" href="logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="assets/css/style.css" />
+    <style>
+        .app-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .notfound-container {
+            min-height: 70vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 3rem 1rem;
+        }
+
+        .notfound-emoji {
+            font-size: 4.5rem;
+        }
+
+        .notfound-code {
+            font-weight: 700;
+            font-size: 2.25rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <div class="notfound-container">
+            <div>
+                <div class="notfound-emoji">🤖</div>
+                <div class="mt-3">
+                    <div class="notfound-code">404 — Page Not Found</div>
+                    <p class="text-muted mt-2">
+                        The page you're looking for doesn't exist or has been moved.
+                    </p>
+                    <div class="mt-4">
+                        <a href="/" class="btn btn-primary me-2">
+                            <i class="bi bi-house-door-fill me-2"></i>
+                            Return Home
+                        </a>
+                        <button class="btn btn-outline-secondary" id="go-back">
+                            <i class="bi bi-arrow-left-circle me-2"></i>
+                            Go Back
+                        </button>
+                    </div>
+                    <p class="text-muted small mt-3 mb-0">
+                        If you think this is an error, check your
+                        URL or open the app from the homepage.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('go-back').addEventListener('click', function () {
+            if (window.history.length > 1) window.history.back();
+            else window.location.href = '/';
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

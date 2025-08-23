@@ -399,6 +399,7 @@ html {
 }
 
 @media only screen and (max-width: 767px) {
+
     /* Slightly thinner scrollbars on small screens */
     ::-webkit-scrollbar {
         width: 6px;
@@ -475,6 +476,10 @@ html {
         width: 100vw;
         left: 0;
     }
+
+    .chat-item-btn {
+        max-width: 11.5rem;
+    }
 }
 
 @media only screen and (min-width: 768px) {
@@ -494,4 +499,10 @@ html {
 
 .display-5 {
     font-size: 2rem;
+}
+
+.avatar,
+.sidebar-header,
+.accordion-button {
+    user-select: none;
 }

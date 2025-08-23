@@ -132,6 +132,7 @@ function startDraftChat() {
     activeChat = null;
     isDraftChat = true;
     conversationHistory = [systemPrompt];
+    localStorage.removeItem("activeChat");
 
     updateChatList();
     updateChatTitle();
@@ -247,7 +248,7 @@ function loadAllChats() {
     if (savedChats) {
         chats = JSON.parse(savedChats);
 
-        if (Object.keys(chats).length === 0) {
+        if (Object.keys(chats).length === 0 || !savedActiveChat) {
             startDraftChat();
             return;
         } else {
@@ -1397,10 +1398,6 @@ document.getElementById("data-tab").addEventListener("click", () => {
     updateStorageInfo();
 });
 
-window.switchToChat = switchToChat;
-window.renameChat = renameChat;
-window.deleteChat = deleteChat;
-
 function toggleLoading(isLoading) {
     const btn = document.getElementById("submit-button");
     userInput.disabled = isLoading;
@@ -1444,6 +1441,10 @@ function renderMemoryList() {
         });
     }
 }
+
+setInterval(() => {
+    clearChatBtnDesktop.style.display = isDraftChat ? "none" : "block";
+}, 10);
 
 document
     .getElementById("data-tab")

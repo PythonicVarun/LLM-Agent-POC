@@ -1,0 +1,15 @@
+name = "llm-agent-poc-static-site"
+main = "src/index.js"
+compatibility_date = "2025-08-23"
+
+[site]
+bucket = "./static"
+include = ["**/*"]
+exclude = ["**/.gitignore", "**/*.bak"]
+
+[[kv_namespaces]]
+binding = "_STATIC_CONTENT"
+id = "ef5fbedd0b1346c3b7b8c13149ebec24"
+
+[observability.logs]
+enabled = true

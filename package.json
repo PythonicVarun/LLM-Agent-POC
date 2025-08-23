@@ -1,0 +1,41 @@
+{
+    "name": "llm-agent-poc",
+    "version": "0.1.0",
+    "description": "A smart LLM agent for various tasks",
+    "keywords": [
+        "llm",
+        "wrangler"
+    ],
+    "homepage": "https://github.com/PythonicVarun/LLM-Agent-POC#readme",
+    "bugs": {
+        "url": "https://github.com/PythonicVarun/LLM-Agent-POC/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/PythonicVarun/LLM-Agent-POC.git"
+    },
+    "license": "MIT",
+    "author": {
+        "name": "Varun Agnihotri",
+        "email": "code@pythonicvarun.me"
+    },
+    "scripts": {
+        "prettify": "prettier --tab-width 4 --write .",
+        "start": "wrangler dev src/index.ts",
+        "predeploy": "node ./scripts/minify-static.js",
+        "deploy": "(wrangler deploy src/index.ts || true) && npm run restore:static",
+        "restore:static": "node ./scripts/restore-static.js",
+        "install:deps": "npm install",
+        "publish": "wrangler publish",
+        "test": "jest"
+    },
+    "devDependencies": {
+        "@cloudflare/kv-asset-handler": "^0.4.0",
+        "@cloudflare/workers-types": "^4.20250823.0",
+        "jest": "^30.0.5",
+        "minify": "^14.1.0",
+        "prettier": "^3.6.2",
+        "uglify-js": "^3.19.3",
+        "wrangler": "^4.32.0"
+    }
+}
