@@ -20,9 +20,12 @@
         :root {
             --body-bg: #f5f5f5;
             --chat-bg: #ffffff;
+            --sidebar-bg: #ffffff;
+            --sidebar-border: #dee2e6;
             --user-bubble-bg: #0d6efd;
             --agent-bubble-bg: #e9ecef;
             --tool-bubble-bg: #f8f9fa;
+            --sidebar-width: 280px;
             /* Scrollbar theme (match Bootstrap neutrals) */
             --scrollbar-thumb: #ced4da;
             --scrollbar-thumb-hover: #adb5bd;
@@ -34,15 +37,140 @@
             font-family: "Inter", sans-serif;
         }
 
-        .chat-container {
-            max-width: 85vw;
-            margin: 2rem auto;
-            border-radius: 0.75rem;
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
+        .app-container {
+            height: 100vh;
+            display: flex;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--sidebar-border);
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 4rem);
+            flex-shrink: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            z-index: 1000;
+        }
+
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--sidebar-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .new-chat-btn {
+            width: 100%;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .chat-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .chat-item {
+            display: flex;
+            color: black;
+            border-radius: 0.5rem;
+            margin-bottom: 0.25rem;
+            padding-right: 0.75rem;
+        }
+
+        .chat-item.active {
+            color: white;
+            background-color: var(--user-bubble-bg);
+        }
+
+        .chat-item-btn {
+            width: 100%;
+            text-align: left;
+            border: none;
+            background: transparent;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            color: #495057;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .chat-item-btn:hover {
+            background-color: #f8f9fa;
+        }
+
+        .chat-item-btn.active {
+            background-color: var(--user-bubble-bg);
+            color: white;
+        }
+
+        .chat-title {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-right: 0.5rem;
+            text-align: left;
+        }
+
+        .chat-actions {
+            display: flex;
+            gap: 0.25rem;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+
+        .chat-item-btn:hover .chat-actions {
+            opacity: 1;
+        }
+
+        .chat-item-btn.active .chat-actions {
+            opacity: 0.8;
+        }
+
+        .chat-action-btn {
+            border: none;
+            background: transparent;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+            color: inherit;
+            font-size: 0.8rem;
+        }
+
+        .chat-action-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            margin-left: var(--sidebar-width);
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--chat-bg);
         }
 
         .chat-header {
@@ -52,6 +180,11 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: fixed;
+            width: calc(100vw - var(--sidebar-width));
+            left: var(--sidebar-width);
+            top: 0;
+            z-index: 999;
         }
 
         #chat-window {
@@ -62,6 +195,7 @@
             display: flex;
             flex-direction: column;
             gap: 1rem;
+            margin: 5rem 0;
         }
 
         .message-wrapper {
@@ -180,6 +314,10 @@
         }
 
         .chat-composer {
+            bottom: 0;
+            width: calc(100vw - var(--sidebar-width));
+            left: var(--sidebar-width);
+            position: fixed;
             padding: 1rem 1.5rem;
             background-color: #ffffff;
             border-top: 1px solid #dee2e6;
@@ -279,17 +417,64 @@
         }
 
         @media only screen and (max-width: 767px) {
+
             /* Slightly thinner scrollbars on small screens */
             ::-webkit-scrollbar {
                 width: 6px;
                 height: 6px;
             }
 
-            .chat-container {
-                margin: 0rem;
+            .sidebar {
+                width: 250px;
+                position: fixed;
+                left: -250px;
+                top: 0;
                 height: 100vh;
-                max-width: 100vw;
-                border-radius: 0rem;
+                z-index: 1050;
+                transition: left 0.3s ease;
+                box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            }
+
+            .sidebar.show {
+                left: 0;
+            }
+
+            .sidebar-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 1040;
+                display: none;
+            }
+
+            .sidebar-overlay.show {
+                display: block;
+            }
+
+            .main-content {
+                width: 100%;
+                margin-left: 0;
+            }
+
+            .mobile-header {
+                z-index: 999;
+                position: fixed;
+                width: 100%;
+                display: flex;
+                align-items: center;
+                padding: 1rem;
+                background: white;
+                border-bottom: 1px solid var(--sidebar-border);
+            }
+
+            .mobile-menu-btn {
+                margin-right: 1rem;
+                border: none;
+                background: transparent;
+                font-size: 1.2rem;
             }
 
             .message-wrapper.agent {
@@ -299,37 +484,100 @@
             .agent-message {
                 max-width: 90vw;
             }
+
+            .chat-header {
+                width: 100vw;
+                left: 0;
+            }
+
+            .chat-composer {
+                width: 100vw;
+                left: 0;
+            }
+        }
+
+        @media only screen and (min-width: 768px) {
+            .mobile-header {
+                display: none;
+            }
+
+            .sidebar-overlay {
+                display: none !important;
+            }
         }
     </style>
 </head>
 
 <body>
-    <div class="chat-container bg-white">
-        <header class="chat-header">
-            <div>
-                <h4 class="mb-0">🤖 LLM Agent</h4>
-                <p class="text-muted mb-0 small">A browser-based multi-tool agent</p>
-            </div>
-            <div class="d-flex align-items-center">
-                <button id="clear-chat-btn" class="btn btn-outline-danger me-2" type="button" title="Clear Chat History">
-                    <i class="bi bi-trash"></i>
-                </button>
-                <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal"
-                    data-bs-target="#appSettingsModal">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div>
+                    <h5 class="mb-0">🤖 LLM Agent</h5>
+                    <small class="text-muted">Multi-tool agent</small>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="modal"
+                    data-bs-target="#appSettingsModal" title="Settings">
                     <i class="bi bi-gear-fill"></i>
                 </button>
             </div>
-        </header>
+            <div class="sidebar-content">
+                <button class="btn btn-primary new-chat-btn" id="new-chat-btn">
+                    <i class="bi bi-plus-lg me-2"></i>New Chat
+                </button>
+                <ul class="chat-list" id="chat-list">
+                    <!-- Chat items will be populated here -->
+                </ul>
+            </div>
+        </div>
 
-        <div id="chat-window"></div>
+        <!-- Sidebar overlay for mobile -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
-        <div class="chat-composer">
-            <form id="chat-form">
-                <input type="text" id="user-input" class="form-control" placeholder="Type your message..."
-                    autocomplete="off" />
-                <button type="submit" id="submit-button"
-                    class="btn btn-primary fs-5 d-flex align-items-center justify-content-center">➤</button>
-            </form>
+        <!-- Main content -->
+        <div class="main-content">
+            <!-- Mobile header -->
+            <div class="mobile-header">
+                <button class="mobile-menu-btn" id="mobile-menu-btn">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div>
+                    <h5 class="mb-0">🤖 LLM Agent</h5>
+                </div>
+                <div class="ms-auto">
+                    <button id="clear-chat-btn" class="btn btn-outline-danger btn-sm me-2" type="button"
+                        title="Clear Chat History">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="chat-container">
+                <header class="chat-header d-none d-md-flex">
+                    <div>
+                        <h4 class="mb-0" id="chat-title">New Chat</h4>
+                        <p class="text-muted mb-0 small">A browser-based multi-tool agent</p>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <button id="clear-chat-btn-desktop" class="btn btn-outline-danger me-2" type="button"
+                            title="Clear Chat History">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </header>
+
+                <div id="chat-window"></div>
+
+                <div class="chat-composer">
+                    <form id="chat-form">
+                        <input type="text" id="user-input" class="form-control" placeholder="Type your message..."
+                            autocomplete="off" />
+                        <button type="submit" id="submit-button"
+                            class="btn btn-primary fs-5 d-flex align-items-center justify-content-center">➤</button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -353,6 +601,10 @@
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="provider-tab" data-bs-toggle="tab"
                                 data-bs-target="#provider-tab-pane" type="button">Provider</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="data-tab" data-bs-toggle="tab" data-bs-target="#data-tab-pane"
+                                type="button">Data</button>
                         </li>
                     </ul>
                     <div class="tab-content pt-4" id="settingsTabsContent">
@@ -400,13 +652,46 @@
                                 Fetch Models & Save Provider
                             </button>
                         </div>
+                        <div class="tab-pane fade" id="data-tab-pane">
+                            <div class="mb-4">
+                                <h6 class="mb-3">Chat Management</h6>
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-danger" type="button" id="clearAllChatsBtn">
+                                        <i class="bi bi-trash3 me-2"></i>Clear All Chats
+                                    </button>
+                                </div>
+                                <small class="form-text text-muted mt-2 d-block">This will permanently delete all chat
+                                    conversations from your browser's storage.</small>
+                            </div>
+                            <hr />
+                            <div class="mb-3">
+                                <h6 class="mb-3">Storage Information</h6>
+                                <div class="row">
+                                    <div class="col-sm-6">
+                                        <small class="text-muted">Total Chats:</small>
+                                        <div class="fw-bold" id="totalChatsCount">0</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <small class="text-muted">Storage Used:</small>
+                                        <div class="fw-bold" id="storageUsed">0 KB</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <hr />
+                            <div class="mb-3">
+                                <h6 class="mb-3">Memory <button id="clearMemoriesBtn" class="btn btn-sm btn-outline-danger float-end">Clear All</button></h6>
+                                <ul id="memoryList" class="list-group mt-2" style="max-height:200px;overflow:auto;"></ul>
+                                <div id="memoryEmptyMsg" class="text-muted mt-2" style="display:none;">No memories saved yet.</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="clearChatModal" tabindex="-1" aria-labelledby="clearChatModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal fade" id="clearChatModal" tabindex="-1" aria-labelledby="clearChatModalLabel" aria-hidden="true"
+        data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
@@ -419,6 +704,77 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-danger" id="confirmClearChat">Clear History</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rename Chat Modal -->
+    <div class="modal fade" id="renameChatModal" tabindex="-1" aria-labelledby="renameChatModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="renameChatModalLabel">Rename Chat</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="chatNameInput" class="form-label">Chat Name</label>
+                        <input type="text" class="form-control" id="chatNameInput" placeholder="Enter chat name">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmRenameChat">Rename</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Chat Modal -->
+    <div class="modal fade" id="deleteChatModal" tabindex="-1" aria-labelledby="deleteChatModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteChatModalLabel">Delete Chat</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this chat? This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteChat">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clear All Chats Modal -->
+    <div class="modal fade" id="clearAllChatsModal" tabindex="-1" aria-labelledby="clearAllChatsModalLabel"
+        aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="clearAllChatsModalLabel">Clear All Chats</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Warning:</strong> This will permanently delete all chat conversations from your
+                        browser's storage.
+                    </div>
+                    <p>Are you sure you want to clear all chats? This action cannot be undone.</p>
+                    <p class="mb-0"><span class="fw-bold" id="clearAllChatsCount">0</span> chat(s) will be deleted.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmClearAllChats">
+                        <i class="bi bi-trash3 me-2"></i>Clear All Chats
+                    </button>
                 </div>
             </div>
         </div>
@@ -464,6 +820,9 @@
         const apiModelEl = document.getElementById("apiModel");
         const saveAndFetchModelsBtn = document.getElementById("saveAndFetchModels");
         const toolsEnabledSwitch = document.getElementById("toolsEnabledSwitch");
+        const clearAllChatsBtn = document.getElementById("clearAllChatsBtn");
+        const totalChatsCount = document.getElementById("totalChatsCount");
+        const storageUsed = document.getElementById("storageUsed");
 
         const systemPrompt = {
             role: "system",
@@ -488,6 +847,12 @@ Tools available:
 - openInBrowser(url: string)
     - Use to open a URL in a new browser tab.
     - Only use it when it's too necessary.
+- addToMemory(memory: string)
+    - Save a memory string to persistent storage.
+    - Can be used to remember important information across sessions like user preferences, past interactions, or specific details the user wants to remember.
+- getMemories(): string[]
+    - Retrieve all saved memory strings.
+    - Can be used to recall important information across sessions like user preferences, past interactions, or specific details the user wants to remember.
 
 Tool-use protocol:
 - Call a tool only when it will materially improve the answer.
@@ -508,25 +873,220 @@ Identity:
 - Your Developer: Varun Agnihotri <@PythonicVarun, code@pythonicvarun.me>`,
         };
 
-        let conversationHistory = [];
+        let conversationHistory = []; // Reference to the active chat's history array
         let settings = {};
+        let chats = {}; // Object to store all chats
+        let activeChat = null; // ID of the active chat
+        let chatCounter = 0; // Counter for generating unique chat IDs
+        let chatToRename = null; // Track which chat is being renamed
+        let chatToDelete = null; // Track which chat is being deleted
+        let isDraftChat = false; // Track if we're in a draft state (not yet saved)
+
+        function generateChatId() {
+            return 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        function createNewChat() {
+            const chatId = generateChatId();
+            const chatName = `Chat ${Object.keys(chats).length + 1}`;
+
+            chats[chatId] = {
+                id: chatId,
+                name: chatName,
+                history: [systemPrompt],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            return chatId;
+        }
+
+        function startDraftChat() {
+            // Save current chat if we have one
+            if (activeChat && chats[activeChat] && !isDraftChat) {
+                chats[activeChat].history = [...conversationHistory];
+                chats[activeChat].updatedAt = new Date().toISOString();
+            }
+
+            // Set up blank draft state
+            activeChat = null;
+            isDraftChat = true;
+            conversationHistory = [systemPrompt];
+
+            // Update UI
+            updateChatList();
+            updateChatTitle();
+            displayHistory();
+
+            // Don't save to localStorage yet
+        }
+
+        function switchToChat(chatId) {
+            if (activeChat && chats[activeChat] && !isDraftChat) {
+                // Save current conversation history to the active chat
+                chats[activeChat].history = [...conversationHistory];
+            }
+
+            activeChat = chatId;
+            isDraftChat = false; // We're switching to an existing chat, not a draft
+            conversationHistory = chats[chatId] ? [...chats[chatId].history] : [systemPrompt];
+
+            updateChatList();
+            updateChatTitle();
+            displayHistory();
+            saveAllChats();
+        }
+
+        function updateChatTitle() {
+            const titleEl = document.getElementById('chat-title');
+            if (titleEl) {
+                if (isDraftChat) {
+                    titleEl.textContent = 'New Chat';
+                } else if (activeChat && chats[activeChat]) {
+                    titleEl.textContent = chats[activeChat].name;
+                } else {
+                    titleEl.textContent = 'New Chat';
+                }
+            }
+        }
+
+        function updateChatList() {
+            const chatList = document.getElementById('chat-list');
+            chatList.innerHTML = '';
+
+            // Sort chats by updatedAt descending
+            const sortedChats = Object.values(chats).sort((a, b) =>
+                new Date(b.updatedAt) - new Date(a.updatedAt)
+            );
+
+            // console.log(sortedChats);
+
+            sortedChats.forEach(chat => {
+                const li = document.createElement('li');
+                const isActive = !isDraftChat && chat.id === activeChat;
+                li.className = `chat-item ${isActive ? 'active' : ''}`;
+                li.innerHTML = `
+                    <button class="chat-item-btn ${isActive ? 'active' : ''}"
+                            onclick="switchToChat('${chat.id}')" data-chat-id="${chat.id}">
+                        <span class="chat-title">${chat.name}</span>
+                        <div class="chat-actions">
+                            <button class="chat-action-btn" onclick="event.stopPropagation(); renameChat('${chat.id}')" title="Rename">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="chat-action-btn" onclick="event.stopPropagation(); deleteChat('${chat.id}')" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </button>
+                `;
+                chatList.appendChild(li);
+            });
+            updateStorageInfo();
+        }
+
+        function updateStorageInfo() {
+            if (totalChatsCount) {
+                totalChatsCount.textContent = Object.keys(chats).length;
+            }
+
+            if (storageUsed) {
+                try {
+                    const allData = localStorage.getItem("allChats") || "{}";
+                    const settings = localStorage.getItem("agentSettings") || "{}";
+                    const totalBytes = allData.length + settings.length;
+                    const totalKB = Math.round(totalBytes / 1024 * 100) / 100;
+                    storageUsed.textContent = `${totalKB} KB`;
+                } catch (e) {
+                    storageUsed.textContent = "Unknown";
+                }
+            }
+        }
+
+        function clearAllChats() {
+            // Clear all chats and create a new default one
+            chats = {};
+            const newChatId = createNewChat();
+            activeChat = newChatId;
+            isDraftChat = false;
+            conversationHistory = [...chats[newChatId].history];
+
+            // Update UI
+            updateChatList();
+            updateChatTitle();
+            displayHistory();
+            saveAllChats();
+            updateStorageInfo();
+
+            bootstrapAlert({
+                title: "Success",
+                body: "All chats have been cleared successfully.",
+                color: "success"
+            });
+        }
+
+        function saveAllChats() {
+            // Save current conversation to active chat before saving (but not if it's a draft)
+            if (activeChat && chats[activeChat] && !isDraftChat) {
+                chats[activeChat].history = [...conversationHistory];
+                // chats[activeChat].updatedAt = new Date().toISOString();
+            }
+
+            localStorage.setItem("allChats", JSON.stringify(chats));
+            localStorage.setItem("activeChat", isDraftChat ? null : activeChat);
+        }
+
+        function loadAllChats() {
+            const savedChats = localStorage.getItem("allChats");
+            const savedActiveChat = localStorage.getItem("activeChat");
+
+            if (savedChats) {
+                chats = JSON.parse(savedChats);
+
+                // If there are no chats, start in draft mode
+                if (Object.keys(chats).length === 0) {
+                    startDraftChat();
+                    return;
+                } else {
+                    // Set active chat to saved one or first available
+                    activeChat = savedActiveChat && chats[savedActiveChat] ? savedActiveChat : Object.keys(chats)[0];
+                    isDraftChat = false;
+                }
+            } else {
+                // Start in draft mode if no saved chats exist
+                startDraftChat();
+                return;
+            }
+
+            // Load conversation history for active chat
+            conversationHistory = chats[activeChat] ? [...chats[activeChat].history] : [systemPrompt];
+            updateChatList();
+            updateChatTitle();
+        }
+
+        // Legacy support - migrate old conversation history
+        function migrateLegacyData() {
+            const legacyHistory = localStorage.getItem("conversationHistory");
+            if (legacyHistory && Object.keys(chats).length === 0) {
+                const history = JSON.parse(legacyHistory);
+                if (history.length > 1) { // More than just system prompt
+                    const chatId = createNewChat();
+                    chats[chatId].name = "Imported Chat";
+                    chats[chatId].history = history;
+                    activeChat = chatId;
+                    localStorage.removeItem("conversationHistory"); // Clean up
+                }
+            }
+        }
 
         function saveConversationHistory() {
-            localStorage.setItem("conversationHistory", JSON.stringify(conversationHistory));
+            // This function is kept for compatibility but now saves to the multi-chat system
+            saveAllChats();
         }
 
         function loadConversationHistory() {
-            const savedHistory = localStorage.getItem("conversationHistory");
-            if (savedHistory) {
-                conversationHistory = JSON.parse(savedHistory);
-                if (conversationHistory.length === 0 || conversationHistory[0].role !== 'system') {
-                    conversationHistory.unshift(systemPrompt);
-                } else {
-                    conversationHistory[0] = systemPrompt; // Always use the latest system prompt
-                }
-            } else {
-                conversationHistory = [systemPrompt];
-            }
+            // This function is kept for compatibility
+            loadAllChats();
+            migrateLegacyData();
         }
 
         function displayHistory() {
@@ -541,7 +1101,7 @@ Identity:
             messagesToRender.forEach(message => {
                 if (message.role === 'user') {
                     addMessageToUI(message.content, 'user');
-                } else if (message.role === 'assistant' && message.content) {
+                } else if (message.role === 'assistant') {
                     if (message.reasoning || message.tool_calls) {
                         const thinkingElement = addThinkingToUI();
                         if (message.reasoning) {
@@ -563,17 +1123,19 @@ Identity:
                         }
                     }
 
-                    const messageElement = addMessageToUI("", "agent");
-                    const cleanFragment = DOMPurify.sanitize(marked.parse(message.content), { RETURN_DOM_FRAGMENT: true });
-                    highlightSyntax(cleanFragment).then(html => {
-                        messageElement.appendChild(html);
-                        messageElement.querySelectorAll("pre:not(:has(.copy-btn))").forEach((pre) => {
-                            const btn = document.createElement("button");
-                            btn.className = "copy-btn";
-                            btn.textContent = "Copy";
-                            pre.appendChild(btn);
+                    if (message.content) {
+                        const messageElement = addMessageToUI("", "agent");
+                        const cleanFragment = DOMPurify.sanitize(marked.parse(message.content), { RETURN_DOM_FRAGMENT: true });
+                        highlightSyntax(cleanFragment).then(html => {
+                            messageElement.appendChild(html);
+                            messageElement.querySelectorAll("pre:not(:has(.copy-btn))").forEach((pre) => {
+                                const btn = document.createElement("button");
+                                btn.className = "copy-btn";
+                                btn.textContent = "Copy";
+                                pre.appendChild(btn);
+                            });
                         });
-                    });
+                    }
                 } else if (message.role === 'tool') {
                     addMessageToUI(`⚙️ Used tool: <strong>${message.name}</strong>`, "tool");
                 }
@@ -605,6 +1167,63 @@ Identity:
             }
 
             return html;
+        }
+
+        async function generateChatTitle(userMessage) {
+            if (!settings.apiKey || !settings.model) {
+                return null; // Can't generate title without API access
+            }
+
+            try {
+                const titlePrompt = {
+                    role: "user",
+                    content: `Based on this message: "${userMessage}"
+
+Generate a short, descriptive title (3-5 words max) that captures the main topic or intent.
+
+Examples:
+- "Fix login bug" -> "Login Bug Fix"
+- "How to center a div?" -> "CSS Centering Help"
+- "Explain machine learning" -> "Machine Learning Basics"
+- "Write a Python script" -> "Python Script Request"
+
+Just respond with the title, nothing else:`
+                };
+
+                const requestBody = {
+                    model: settings.model,
+                    messages: [titlePrompt],
+                    max_tokens: 20,
+                    temperature: 0.7
+                };
+
+                const response = await fetch(`${settings.baseUrl}/chat/completions`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${settings.apiKey}`
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const title = data.choices?.[0]?.message?.content?.trim();
+
+                // Clean up the title and ensure it's reasonable
+                if (title && title.length > 0 && title.length <= 50) {
+                    // Remove quotes if present
+                    return title.replace(/^["']|["']$/g, '');
+                }
+
+                return null;
+            } catch (error) {
+                console.error("Failed to generate chat title:", error);
+                return null;
+            }
         }
 
         function loadSettings() {
@@ -880,12 +1499,42 @@ Identity:
             }
         }
 
-        const availableTools = { googleSearch, callAIPipe, executeJavaScript, openInBrowser };
+        // Memory Tools
+        function addToMemory(memory) {
+            // console.log("Adding memory:", memory);
+            if (!memory || typeof memory !== "string" || !memory.trim()) {
+                return JSON.stringify({ success: false, message: "Memory must be a non-empty string." });
+            }
+
+            let memories = [];
+            try {
+                memories = JSON.parse(localStorage.getItem("agentMemories") || "[]");
+            } catch {
+                memories = [];
+            }
+
+            memories.push({ memory, timestamp: new Date().toISOString() });
+            localStorage.setItem("agentMemories", JSON.stringify(memories));
+            return JSON.stringify({ success: true, message: "Memory saved." });
+        }
+
+        function getMemories() {
+            try {
+                const memories = JSON.parse(localStorage.getItem("agentMemories") || "[]");
+                return JSON.stringify(memories);
+            } catch {
+                return JSON.stringify([]);
+            }
+        }
+
+        const availableTools = { googleSearch, callAIPipe, executeJavaScript, openInBrowser, addToMemory, getMemories };
         const tools = [
             { type: "function", function: { name: "googleSearch", description: "Search Google for recent results.", parameters: { type: "object", properties: { query: { type: "string" } } } } },
             { type: "function", function: { name: "callAIPipe", description: "Run a dataflow.", parameters: { type: "object", properties: { pipeline: { type: "string" } } } } },
             { type: "function", function: { name: "executeJavaScript", description: "Execute JS code.", parameters: { type: "object", properties: { code: { type: "string" } } } } },
             { type: "function", function: { name: "openInBrowser", description: "Open a URL in the browser.", parameters: { type: "object", properties: { url: { type: "string" } } } } },
+            { type: "function", function: { name: "addToMemory", description: "Save a memory string to persistent storage.", parameters: { type: "object", properties: { memory: { type: "string", description: "The memory to save." } }, required: ["memory"] } } },
+            { type: "function", function: { name: "getMemories", description: "Retrieve all saved memories.", parameters: { type: "object", properties: {} } } },
         ];
 
         async function runConversation() {
@@ -897,14 +1546,39 @@ Identity:
                 fullContent = "";
 
             try {
-                // Filter messages before sending
-                const messagesToSend = conversationHistory.map(msg => {
+                let memories = [];
+                try {
+                    memories = JSON.parse(localStorage.getItem("agentMemories") || "[]");
+                } catch {
+                    memories = [];
+                }
+
+                const baseSystemPrompt = systemPrompt.content;
+                let dynamicSystemPromptContent = baseSystemPrompt;
+
+                if (memories.length > 0) {
+                    const memoryStrings = memories.map(m => `- ${m.memory}`).join('\n');
+                    dynamicSystemPromptContent += `
+
+---
+Here are some memories you have saved. Use them for context, but do not mention them unless the user's query is directly related.
+${memoryStrings}
+---
+`;
+                }
+
+                const dynamicSystemPrompt = { role: "system", content: dynamicSystemPromptContent };
+
+                // Filter messages before sending and inject memories
+                const messagesToSend = conversationHistory.slice(1).map(msg => {
                     if (msg.role === 'assistant' && msg.reasoning) {
                         const { reasoning, ...messageWithoutReasoning } = msg;
                         return messageWithoutReasoning;
                     }
                     return msg;
                 });
+                messagesToSend.unshift(dynamicSystemPrompt);
+
 
                 const requestBody = {
                     model: settings.model,
@@ -1006,6 +1680,8 @@ Identity:
                     await runConversation();
                 } else {
                     toggleLoading(false);
+                    // Update chat list to reflect the new activity order
+                    updateChatList();
                 }
             } catch (error) {
                 bootstrapAlert({ title: "Error", body: error.message, color: "danger" });
@@ -1022,6 +1698,79 @@ Identity:
                 bootstrapAlert({ title: "Configuration Needed", body: "Please set your API Key and fetch models in the Settings (⚙️) menu.", color: "warning" });
                 new bootstrap.Modal(document.getElementById("appSettingsModal")).show();
                 return;
+            }
+
+            // If we're in draft mode, create a new chat now
+            if (isDraftChat) {
+                const newChatId = createNewChat();
+                activeChat = newChatId;
+                isDraftChat = false;
+
+                // Set temporary name initially (will be replaced by AI-generated title)
+                const tempName = userText.length > 15 ? userText.substring(0, 15) + "..." : userText;
+                chats[activeChat].name = tempName;
+                chats[activeChat].updatedAt = new Date().toISOString();
+
+                updateChatList();
+                updateChatTitle();
+
+                // Show title generation in progress
+                const titleEl = document.getElementById('chat-title');
+                if (titleEl) {
+                    titleEl.innerHTML = `${tempName} <small class="text-muted"><i class="bi bi-three-dots"></i></small>`;
+                }
+
+                // Generate AI title in the background
+                generateChatTitle(userText).then(aiTitle => {
+                    if (aiTitle && activeChat && chats[activeChat]) {
+                        chats[activeChat].name = aiTitle;
+                        chats[activeChat].updatedAt = new Date().toISOString();
+                        updateChatList();
+                        updateChatTitle();
+                        saveAllChats();
+                    } else {
+                        // Fallback to temp name if AI generation failed
+                        updateChatTitle();
+                    }
+                }).catch(error => {
+                    console.error("Title generation failed:", error);
+                    updateChatTitle(); // Remove loading indicator
+                });
+
+            } else if (activeChat && chats[activeChat] && chats[activeChat].history.length === 1) {
+                // Auto-rename chat if it's the first message in an existing chat
+                const tempName = userText.length > 30 ? userText.substring(0, 30) + "..." : userText;
+                chats[activeChat].name = tempName;
+                chats[activeChat].updatedAt = new Date().toISOString();
+                updateChatList();
+                updateChatTitle();
+
+                // Show title generation in progress
+                const titleEl = document.getElementById('chat-title');
+                if (titleEl) {
+                    titleEl.innerHTML = `${tempName} <small class="text-muted"><i class="bi bi-three-dots"></i></small>`;
+                }
+
+                // Generate AI title in the background
+                generateChatTitle(userText).then(aiTitle => {
+                    if (aiTitle && activeChat && chats[activeChat]) {
+                        chats[activeChat].name = aiTitle;
+                        chats[activeChat].updatedAt = new Date().toISOString();
+                        updateChatList();
+                        updateChatTitle();
+                        saveAllChats();
+                    } else {
+                        // Fallback to temp name if AI generation failed
+                        updateChatTitle();
+                    }
+                }).catch(error => {
+                    console.error("Title generation failed:", error);
+                    updateChatTitle(); // Remove loading indicator
+                });
+            } else if (activeChat && chats[activeChat]) {
+                // Update timestamp for existing chat with new message
+                chats[activeChat].updatedAt = new Date().toISOString();
+                updateChatList();
             }
 
             addMessageToUI(userText, "user");
@@ -1102,17 +1851,134 @@ Identity:
             }
         });
 
-        clearChatBtn.addEventListener("click", () => {
-            const clearChatModal = new bootstrap.Modal(document.getElementById("clearChatModal"));
-            clearChatModal.show();
+        // Chat management event handlers
+        const clearChatBtnDesktop = document.getElementById("clear-chat-btn-desktop");
+        const newChatBtn = document.getElementById("new-chat-btn");
+        const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+        const sidebar = document.getElementById("sidebar");
+        const sidebarOverlay = document.getElementById("sidebar-overlay");
+
+        // New chat button
+        newChatBtn.addEventListener("click", () => {
+            startDraftChat();
         });
 
+        // Mobile menu toggle
+        mobileMenuBtn.addEventListener("click", () => {
+            sidebar.classList.toggle("show");
+            sidebarOverlay.classList.toggle("show");
+        });
+
+        // Close sidebar when clicking overlay
+        sidebarOverlay.addEventListener("click", () => {
+            sidebar.classList.remove("show");
+            sidebarOverlay.classList.remove("show");
+        });
+
+        clearChatBtn.addEventListener("click", () => deleteChat(activeChat));
+        clearChatBtnDesktop.addEventListener("click", () => deleteChat(activeChat));
+
+        // Confirm clear chat
         document.getElementById("confirmClearChat").addEventListener("click", () => {
-            conversationHistory = [systemPrompt];
-            saveConversationHistory();
-            displayHistory();
+            if (isDraftChat) {
+                // If in draft mode, just reset the conversation
+                conversationHistory = [systemPrompt];
+                displayHistory();
+            } else if (activeChat && chats[activeChat]) {
+                chats[activeChat].history = [systemPrompt];
+                conversationHistory = [systemPrompt];
+                chats[activeChat].updatedAt = new Date().toISOString();
+                saveAllChats();
+                displayHistory();
+            }
             bootstrap.Modal.getInstance(document.getElementById("clearChatModal")).hide();
         });
+
+        // Rename chat functions
+        function renameChat(chatId) {
+            chatToRename = chatId;
+            const chatNameInput = document.getElementById("chatNameInput");
+            chatNameInput.value = chats[chatId].name;
+            const renameChatModal = new bootstrap.Modal(document.getElementById("renameChatModal"));
+            renameChatModal.show();
+            setTimeout(() => chatNameInput.focus(), 100);
+        }
+
+        // Confirm rename chat
+        document.getElementById("confirmRenameChat").addEventListener("click", () => {
+            const newName = document.getElementById("chatNameInput").value.trim();
+            if (newName && chatToRename && chats[chatToRename]) {
+                chats[chatToRename].name = newName;
+                chats[chatToRename].updatedAt = new Date().toISOString();
+                updateChatList();
+                updateChatTitle();
+                saveAllChats();
+            }
+            bootstrap.Modal.getInstance(document.getElementById("renameChatModal")).hide();
+            chatToRename = null;
+        });
+
+        // Handle enter key in rename input
+        document.getElementById("chatNameInput").addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                document.getElementById("confirmRenameChat").click();
+            }
+        });
+
+        // Delete chat functions
+        function deleteChat(chatId) {
+            chatToDelete = chatId;
+            const deleteChatModal = new bootstrap.Modal(document.getElementById("deleteChatModal"));
+            deleteChatModal.show();
+        }
+
+        // Confirm delete chat
+        document.getElementById("confirmDeleteChat").addEventListener("click", () => {
+            if (chatToDelete && chats[chatToDelete]) {
+                delete chats[chatToDelete];
+
+                // If we deleted the active chat, switch to another one or start draft mode
+                if (chatToDelete === activeChat) {
+                    const remainingChats = Object.keys(chats);
+                    if (remainingChats.length > 0) {
+                        switchToChat(remainingChats[0]);
+                    } else {
+                        startDraftChat();
+                    }
+                } else {
+                    updateChatList();
+                    saveAllChats();
+                }
+            }
+            bootstrap.Modal.getInstance(document.getElementById("deleteChatModal")).hide();
+            chatToDelete = null;
+        });
+
+        // Clear all chats functions
+        clearAllChatsBtn.addEventListener("click", () => {
+            const clearAllChatsModal = new bootstrap.Modal(document.getElementById("clearAllChatsModal"));
+            const countElement = document.getElementById("clearAllChatsCount");
+            if (countElement) {
+                countElement.textContent = Object.keys(chats).length;
+            }
+            clearAllChatsModal.show();
+        });
+
+        // Confirm clear all chats
+        document.getElementById("confirmClearAllChats").addEventListener("click", () => {
+            clearAllChats();
+            bootstrap.Modal.getInstance(document.getElementById("clearAllChatsModal")).hide();
+        });
+
+        // Update storage info when Data tab is shown
+        document.getElementById("data-tab").addEventListener("click", () => {
+            updateStorageInfo();
+        });
+
+        // Make functions globally available for onclick handlers
+        window.switchToChat = switchToChat;
+        window.renameChat = renameChat;
+        window.deleteChat = deleteChat;
 
         function toggleLoading(isLoading) {
             const btn = document.getElementById("submit-button");
@@ -1122,9 +1988,49 @@ Identity:
             if (!isLoading) userInput.focus();
         }
 
+        // --- Memory UI in Data Tab ---
+        function renderMemoryList() {
+            const memoryList = document.getElementById("memoryList");
+            const memoryEmptyMsg = document.getElementById("memoryEmptyMsg");
+            if (!memoryList || !memoryEmptyMsg) return;
+            let memories = [];
+            try {
+                memories = JSON.parse(localStorage.getItem("agentMemories") || "[]");
+            } catch { memories = []; }
+            memoryList.innerHTML = "";
+            if (!memories.length) {
+                memoryEmptyMsg.style.display = "block";
+                memoryList.style.display = "none";
+                return;
+            }
+            memoryEmptyMsg.style.display = "none";
+            memoryList.style.display = "block";
+            memories.slice().reverse().forEach(m => {
+                const li = document.createElement("li");
+                li.className = "list-group-item d-flex justify-content-between align-items-start py-2 px-2";
+                li.innerHTML = `<span>${DOMPurify.sanitize(m.memory)}</span><span class='text-muted small ms-2'>${new Date(m.timestamp).toLocaleString()}</span>`;
+                memoryList.appendChild(li);
+            });
+        }
+
+        // Render memory list only when Data tab is shown
+        document.getElementById("data-tab").addEventListener("click", renderMemoryList);
+
+        // Clear all memories (button is in Data tab)
+        document.getElementById("data-tab-pane").addEventListener("click", function(e) {
+            if (e.target && e.target.id === "clearMemoriesBtn") {
+                if (confirm("Are you sure you want to clear all memories? This cannot be undone.")) {
+                    localStorage.removeItem("agentMemories");
+                    renderMemoryList();
+                    bootstrapAlert({ title: "Memory Cleared", body: "All memories have been deleted.", color: "success" });
+                }
+            }
+        });
+
         loadSettings();
         loadConversationHistory();
         displayHistory();
+        updateStorageInfo();
     </script>
 </body>
 
