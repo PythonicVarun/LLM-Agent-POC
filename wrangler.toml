@@ -1,6 +1,6 @@
 name = "llm-agent-poc-static-site"
 main = "src/index.js"
-compatibility_date = "2025-08-23"
+compatibility_date = "2025-08-24"
 
 [site]
 bucket = "./static"
