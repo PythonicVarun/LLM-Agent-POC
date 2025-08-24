@@ -281,14 +281,19 @@
                                 </div>
                                 <hr />
                                 <div class="mb-3">
-                                    <label for="aipipeApiKey" class="form-label d-flex justify-content-between">
+                                    <label
+                                        for="aipipeApiKey"
+                                        class="form-label d-flex justify-content-between"
+                                    >
                                         <span>AI Pipe Token</span>
                                         <a
                                             href="https://aipipe.org/login"
                                             target="_blank"
                                         >
                                             Get token
-                                            <i class="bi bi-box-arrow-up-right"></i>
+                                            <i
+                                                class="bi bi-box-arrow-up-right"
+                                            ></i>
                                         </a>
                                     </label>
                                     <input
@@ -299,8 +304,11 @@
                                     />
                                     <small class="form-text text-muted">
                                         Used by the built-in AI Pipe tool
-                                        (usage, similarity, OpenAI/OpenRouter/Gemini via aipipe.org).
-                                        If empty, we'll try to detect a token from your AI Pipe session.
+                                        (usage, similarity,
+                                        OpenAI/OpenRouter/Gemini via
+                                        aipipe.org). If empty, we'll try to
+                                        detect a token from your AI Pipe
+                                        session.
                                     </small>
                                 </div>
                                 <hr />
@@ -439,8 +447,8 @@
                                 <div class="mb-4">
                                     <h6 class="mb-2">AI Pipe</h6>
                                     <p class="text-muted small">
-                                        Use these to quickly verify your
-                                        AI Pipe token/session.
+                                        Use these to quickly verify your AI Pipe
+                                        token/session.
                                     </p>
                                     <div class="d-flex flex-wrap gap-2">
                                         <button
@@ -462,7 +470,9 @@
                                 <hr />
                                 <div class="mb-4">
                                     <h6 class="mb-2">Serper (Google Search)</h6>
-                                    <div class="d-flex align-items-center gap-2">
+                                    <div
+                                        class="d-flex align-items-center gap-2"
+                                    >
                                         <button
                                             class="btn btn-outline-secondary"
                                             type="button"
@@ -470,17 +480,20 @@
                                         >
                                             Test Serper Search
                                         </button>
-                                        <small
-                                            class="form-text text-muted"
-                                        >
-                                            Runs a quick search to verify your key.
+                                        <small class="form-text text-muted">
+                                            Runs a quick search to verify your
+                                            key.
                                         </small>
                                     </div>
                                 </div>
                                 <hr />
                                 <div class="mb-2">
-                                    <h6 class="mb-2">Provider (OpenAI-compatible)</h6>
-                                    <div class="d-flex align-items-center gap-2">
+                                    <h6 class="mb-2">
+                                        Provider (OpenAI-compatible)
+                                    </h6>
+                                    <div
+                                        class="d-flex align-items-center gap-2"
+                                    >
                                         <button
                                             class="btn btn-outline-secondary"
                                             type="button"
@@ -488,9 +501,7 @@
                                         >
                                             Test List Models
                                         </button>
-                                        <small
-                                            class="form-text text-muted"
-                                        >
+                                        <small class="form-text text-muted">
                                             Calls GET /models on your configured
                                             base URL with your API key.
                                         </small>
@@ -545,6 +556,79 @@
                         >
                             Clear History
                         </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Google Results Modal -->
+        <div
+            class="modal fade"
+            id="googleResultsModal"
+            tabindex="-1"
+            aria-labelledby="googleResultsModalLabel"
+            aria-hidden="true"
+        >
+            <div class="modal-dialog modal-xl modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="googleResultsModalLabel">
+                            Google Search Results
+                        </h5>
+                        <button
+                            type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"
+                        ></button>
+                    </div>
+                    <div class="modal-body p-0" style="height: 70vh">
+                        <iframe
+                            id="googleResultsFrame"
+                            src="google-results.html"
+                            title="Google Search Results"
+                            style="width: 100%; height: 100%; border: 0"
+                        ></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- JS Execution Results Modal -->
+        <div
+            class="modal fade"
+            id="jsExecResultsModal"
+            tabindex="-1"
+            aria-labelledby="jsExecResultsModalLabel"
+            aria-hidden="true"
+        >
+            <div class="modal-dialog modal-xl modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="jsExecResultsModalLabel">
+                            JavaScript Execution
+                        </h5>
+                        <a
+                            class="btn btn-sm btn-outline-secondary me-2"
+                            href="js-results.html"
+                            target="_blank"
+                            rel="noopener"
+                            >Open in new tab</a
+                        >
+                        <button
+                            type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"
+                        ></button>
+                    </div>
+                    <div class="modal-body p-0" style="height: 70vh">
+                        <iframe
+                            id="jsExecResultsFrame"
+                            src="js-results.html"
+                            title="JavaScript Execution Results"
+                            style="width: 100%; height: 100%; border: 0"
+                        ></iframe>
                     </div>
                 </div>
             </div>

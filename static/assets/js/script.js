@@ -97,6 +97,7 @@ let activeChat = null;
 let chatToRename = null;
 let chatToDelete = null;
 let isDraftChat = false;
+let pendingPreviewPayloads = [];
 
 function scrollToBottom(smooth = false) {
     const messages = chatWindow.querySelectorAll("div");
@@ -359,10 +360,164 @@ async function displayHistory() {
                     });
             }
         } else if (message.role === "tool") {
-            addMessageToUI(
-                `⚙️ Used tool: <strong>${message.name}</strong>`,
-                "tool",
-            );
+            if (message.name === "googleSearch") {
+                const mEl = addMessageToUI(
+                    `⚙️ Used tool: <strong>${message.name}</strong> <button type="button" class="btn btn-sm btn-outline-secondary ms-2" data-bs-toggle="modal" data-bs-target="#googleResultsModal" title="Preview mock Google results">Preview results</button>`,
+                    "tool",
+                );
+
+                const btn = mEl.querySelector(
+                    'button[data-bs-target="#googleResultsModal"]',
+                );
+                if (btn) {
+                    btn.addEventListener("click", () => {
+                        const frame =
+                            document.getElementById("googleResultsFrame");
+                        const link = document.querySelector(
+                            "#googleResultsModal a[href]",
+                        );
+                        let srcUrl = "google-results.html";
+                        try {
+                            let simplified;
+                            try {
+                                simplified = JSON.parse(
+                                    message.content || "null",
+                                );
+                            } catch (_) {
+                                simplified = null;
+                            }
+                            const q = message.meta?.query || "";
+                            if (simplified && Array.isArray(simplified)) {
+                                const payload = buildGoogleMockData(
+                                    q,
+                                    simplified,
+                                );
+                                const json = JSON.stringify(payload);
+                                let b64;
+                                try {
+                                    b64 = btoa(
+                                        unescape(encodeURIComponent(json)),
+                                    );
+                                } catch (_) {
+                                    b64 = btoa(json);
+                                }
+                                srcUrl = `google-results.html?data=${encodeURIComponent(b64)}`;
+                            } else {
+                                // Fallback to last stored payload if available
+                                try {
+                                    const stored = localStorage.getItem(
+                                        "lastGoogleSearchPayload",
+                                    );
+                                    if (stored) {
+                                        const payload = JSON.parse(stored);
+                                        if (q)
+                                            payload.searchParameters = {
+                                                ...(payload.searchParameters ||
+                                                    {}),
+                                                q,
+                                            };
+                                        const json = JSON.stringify(payload);
+                                        let b64;
+                                        try {
+                                            b64 = btoa(
+                                                unescape(
+                                                    encodeURIComponent(json),
+                                                ),
+                                            );
+                                        } catch (_) {
+                                            b64 = btoa(json);
+                                        }
+                                        srcUrl = `google-results.html?data=${encodeURIComponent(b64)}`;
+                                    } else if (q) {
+                                        srcUrl = `google-results.html?q=${encodeURIComponent(q)}`;
+                                    }
+                                } catch (_) {
+                                    if (q)
+                                        srcUrl = `google-results.html?q=${encodeURIComponent(q)}`;
+                                }
+                            }
+                        } catch (_) {
+                            // keep default
+                        }
+                        if (frame) frame.src = srcUrl;
+                        if (link) link.href = srcUrl;
+                    });
+                }
+            } else if (message.name === "executeJavaScript") {
+                const mEl = addMessageToUI(
+                    `⚙️ Used tool: <strong>${message.name}</strong> <button type="button" class="btn btn-sm btn-outline-secondary ms-2" data-bs-toggle="modal" data-bs-target="#jsExecResultsModal" title="Preview JS execution results">Preview results</button>`,
+                    "tool",
+                );
+                const btn = mEl.querySelector(
+                    'button[data-bs-target="#jsExecResultsModal"]',
+                );
+                if (btn) {
+                    btn.addEventListener("click", () => {
+                        const frame =
+                            document.getElementById("jsExecResultsFrame");
+                        const link = document.querySelector(
+                            "#jsExecResultsModal a[href]",
+                        );
+                        let srcUrl = "js-results.html";
+                        try {
+                            let out;
+                            try {
+                                out = JSON.parse(message.content || "null");
+                            } catch (_) {
+                                out = null;
+                            }
+                            const code = message?.meta?.code || "";
+                            if (
+                                out &&
+                                (out.result !== undefined ||
+                                    out.error !== undefined ||
+                                    out.logs)
+                            ) {
+                                const payload = {
+                                    code,
+                                    result: out.result ?? null,
+                                    error: out.error ?? null,
+                                    logs: out.logs ?? [],
+                                };
+                                const json = JSON.stringify(payload);
+                                let b64;
+                                try {
+                                    b64 = btoa(
+                                        unescape(encodeURIComponent(json)),
+                                    );
+                                } catch (_) {
+                                    b64 = btoa(json);
+                                }
+                                srcUrl = `js-results.html?data=${encodeURIComponent(b64)}`;
+                            } else {
+                                const stored =
+                                    localStorage.getItem("lastJsExecPayload");
+                                if (stored) {
+                                    const payload = JSON.parse(stored);
+                                    if (code) payload.code = code;
+                                    const json = JSON.stringify(payload);
+                                    let b64;
+                                    try {
+                                        b64 = btoa(
+                                            unescape(encodeURIComponent(json)),
+                                        );
+                                    } catch (_) {
+                                        b64 = btoa(json);
+                                    }
+                                    srcUrl = `js-results.html?data=${encodeURIComponent(b64)}`;
+                                }
+                            }
+                        } catch (_) {}
+                        if (frame) frame.src = srcUrl;
+                        if (link) link.href = srcUrl;
+                    });
+                }
+            } else {
+                addMessageToUI(
+                    `⚙️ Used tool: <strong>${message.name}</strong>`,
+                    "tool",
+                );
+            }
         }
     }
     scrollToBottom();
@@ -620,7 +775,9 @@ async function callAIPipe(pipeline, data) {
             }
             return json;
         } catch (e) {
-            return JSON.stringify({ error: `Could not serialize: ${String(e)}` });
+            return JSON.stringify({
+                error: `Could not serialize: ${String(e)}`,
+            });
         }
     };
 
@@ -671,11 +828,17 @@ async function callAIPipe(pipeline, data) {
             } else if (resource === "responses") {
                 url = `${AIPIPE_BASE}/openai/v1/responses`;
                 method = "POST";
-                body = data && typeof data === "object" ? data : { model: "gpt-4.1-nano", input: "ping" };
+                body =
+                    data && typeof data === "object"
+                        ? data
+                        : { model: "gpt-4.1-nano", input: "ping" };
             } else if (resource === "embeddings") {
                 url = `${AIPIPE_BASE}/openai/v1/embeddings`;
                 method = "POST";
-                body = data && typeof data === "object" ? data : { model: "text-embedding-3-small", input: "ping" };
+                body =
+                    data && typeof data === "object"
+                        ? data
+                        : { model: "text-embedding-3-small", input: "ping" };
             } else {
                 // Allow arbitrary path after openai:
                 const path = resource.replace(/^\//, "");
@@ -690,10 +853,15 @@ async function callAIPipe(pipeline, data) {
             } else if (resource === "chat" || resource === "chat.completions") {
                 url = `${AIPIPE_BASE}/openrouter/v1/chat/completions`;
                 method = "POST";
-                body = data && typeof data === "object" ? data : {
-                    model: "openai/gpt-4o-mini",
-                    messages: [{ role: "user", content: "What is 2 + 2?" }],
-                };
+                body =
+                    data && typeof data === "object"
+                        ? data
+                        : {
+                              model: "openai/gpt-4o-mini",
+                              messages: [
+                                  { role: "user", content: "What is 2 + 2?" },
+                              ],
+                          };
             } else {
                 const path = resource.replace(/^\//, "");
                 url = `${AIPIPE_BASE}/openrouter/${path}`;
@@ -708,16 +876,24 @@ async function callAIPipe(pipeline, data) {
             } else if (resource.toLowerCase().includes(":generatecontent")) {
                 url = `${AIPIPE_BASE}/geminiv1beta/${resource}`;
                 method = "POST";
-                body = data && typeof data === "object" ? data : {
-                    contents: [{ parts: [{ text: "What is 2 + 2?" }] }],
-                };
+                body =
+                    data && typeof data === "object"
+                        ? data
+                        : {
+                              contents: [
+                                  { parts: [{ text: "What is 2 + 2?" }] },
+                              ],
+                          };
             } else if (resource.toLowerCase().includes(":embedcontent")) {
                 url = `${AIPIPE_BASE}/geminiv1beta/${resource}`;
                 method = "POST";
-                body = data && typeof data === "object" ? data : {
-                    model: "gemini-embedding-001",
-                    content: { parts: [{ text: "What is 2 + 2?" }] },
-                };
+                body =
+                    data && typeof data === "object"
+                        ? data
+                        : {
+                              model: "gemini-embedding-001",
+                              content: { parts: [{ text: "What is 2 + 2?" }] },
+                          };
             } else {
                 const path = resource.replace(/^\//, "");
                 url = `${AIPIPE_BASE}/geminiv1beta/${path}`;
@@ -769,83 +945,90 @@ async function callAIPipe(pipeline, data) {
         }
 
         if (!resp.ok) {
-            const errMsg = out?.error || resp.statusText || `HTTP ${resp.status}`;
-            throw new Error(typeof errMsg === "string" ? errMsg : JSON.stringify(errMsg));
+            const errMsg =
+                out?.error || resp.statusText || `HTTP ${resp.status}`;
+            throw new Error(
+                typeof errMsg === "string" ? errMsg : JSON.stringify(errMsg),
+            );
         }
 
         return safeStringify({ pipeline: p, status: resp.status, data: out });
     } catch (error) {
-        bootstrapAlert({ title: "AI Pipe Error", body: String(error?.message || error), color: "danger" });
+        bootstrapAlert({
+            title: "AI Pipe Error",
+            body: String(error?.message || error),
+            color: "danger",
+        });
         return safeStringify({ error: String(error?.message || error) });
     }
 }
 
 async function executeJavaScript(code) {
     const workerSource = `
-    self.onmessage = async (e) => {
-        const { id, code } = e.data || {};
+            self.onmessage = async (e) => {
+                const { id, code } = e.data || {};
 
-        const serialize = (obj) => {
-            try {
-            const seen = new WeakSet();
-            return JSON.stringify(obj, function (k, v) {
-                if (typeof v === 'bigint') return v.toString() + 'n';
-                if (typeof v === 'function') return '[Function ' + (v.name || 'anonymous') + ']';
-                if (typeof v === 'symbol') return v.toString();
-                if (v && typeof v === 'object') {
-                if (seen.has(v)) return '[Circular]';
-                seen.add(v);
-                }
-                return v;
-            });
-            } catch (e) {
-            return JSON.stringify({ error: 'Could not serialize value' });
-            }
-        };
+                const serialize = (obj) => {
+                    try {
+                    const seen = new WeakSet();
+                    return JSON.stringify(obj, function (k, v) {
+                        if (typeof v === 'bigint') return v.toString() + 'n';
+                        if (typeof v === 'function') return '[Function ' + (v.name || 'anonymous') + ']';
+                        if (typeof v === 'symbol') return v.toString();
+                        if (v && typeof v === 'object') {
+                        if (seen.has(v)) return '[Circular]';
+                        seen.add(v);
+                        }
+                        return v;
+                    });
+                    } catch (e) {
+                    return JSON.stringify({ error: 'Could not serialize value' });
+                    }
+                };
 
-        const reply = (payload) => {
-            try {
-                const out = { id, type: payload.type };
-                if (payload.type === 'log') {
-                    out.level = payload.level;
-                    out.args = serialize(payload.args);
-                } else if (payload.type === 'result') {
-                    out.result = serialize(payload.result);
-                } else if (payload.type === 'error') {
-                    out.error = serialize(payload.error);
-                } else {
-                    out.payload = serialize(payload);
-                }
-                self.postMessage(out);
-            } catch (err) {
+                const reply = (payload) => {
+                    try {
+                        const out = { id, type: payload.type };
+                        if (payload.type === 'log') {
+                            out.level = payload.level;
+                            out.args = serialize(payload.args);
+                        } else if (payload.type === 'result') {
+                            out.result = serialize(payload.result);
+                        } else if (payload.type === 'error') {
+                            out.error = serialize(payload.error);
+                        } else {
+                            out.payload = serialize(payload);
+                        }
+                        self.postMessage(out);
+                    } catch (err) {
+                        try {
+                            self.postMessage({ id, type: 'error', error: serialize('postMessage failed: ' + String(err)) });
+                        } catch (_) {
+                            // pass
+                        }
+                    }
+                };
+
+                const consoleProxy = {
+                    log: (...args) => reply({ type: 'log', level: 'log', args }),
+                    info: (...args) => reply({ type: 'log', level: 'info', args }),
+                    warn: (...args) => reply({ type: 'log', level: 'warn', args }),
+                    error: (...args) => reply({ type: 'log', level: 'error', args })
+                };
+
                 try {
-                    self.postMessage({ id, type: 'error', error: serialize('postMessage failed: ' + String(err)) });
-                } catch (_) {
-                    // pass
+                    // Shadow globals inside evaluated code
+                    const prelude = 'const window=undefined,document=undefined,postMessage=undefined,importScripts=undefined,XMLHttpRequest=undefined,fetch=undefined,WebSocket=undefined,navigator=undefined,location=undefined,localStorage=undefined,sessionStorage=undefined,FileReader=undefined,caches=undefined,globalThis=undefined,self=undefined;';
+
+                    const wrapped = '"use strict";\\n' + prelude + '\\nreturn (async () => { try { return eval(' + JSON.stringify(code || '') + '); } catch (e) { throw e } })()';
+                    const fn = new Function('console', wrapped);
+                    const result = await fn(consoleProxy);
+                    reply({ type: 'result', result });
+                } catch (err) {
+                    reply({ type: 'error', error: err && err.message ? err.message : String(err) });
                 }
-            }
-        };
-
-        const consoleProxy = {
-            log: (...args) => reply({ type: 'log', level: 'log', args }),
-            info: (...args) => reply({ type: 'log', level: 'info', args }),
-            warn: (...args) => reply({ type: 'log', level: 'warn', args }),
-            error: (...args) => reply({ type: 'log', level: 'error', args })
-        };
-
-        try {
-            // Shadow globals inside evaluated code
-            const prelude = 'const window=undefined,document=undefined,postMessage=undefined,importScripts=undefined,XMLHttpRequest=undefined,fetch=undefined,WebSocket=undefined,navigator=undefined,location=undefined,localStorage=undefined,sessionStorage=undefined,FileReader=undefined,caches=undefined,globalThis=undefined,self=undefined;';
-
-            const wrapped = '"use strict";\n' + prelude + '\nreturn (async () => { try { return eval(' + JSON.stringify(code || '') + '); } catch (e) { throw e } })()';
-            const fn = new Function('console', wrapped);
-            const result = await fn(consoleProxy);
-            reply({ type: 'result', result });
-        } catch (err) {
-            reply({ type: 'error', error: err && err.message ? err.message : String(err) });
-        }
-    };
-    `;
+            };
+            `;
 
     const blobUrl = URL.createObjectURL(
         new Blob([workerSource], { type: "application/javascript" }),
@@ -961,6 +1144,29 @@ async function openInBrowser(url) {
             message: "Failed to open link in the browser.",
         });
     }
+}
+
+function buildGoogleMockData(query, simplifiedResults) {
+    const organic = Array.isArray(simplifiedResults)
+        ? simplifiedResults.map((r, i) => ({
+              title: r.title || r.name || r.link || `Result ${i + 1}`,
+              link: r.link || r.url || "",
+              snippet: r.snippet || r.description || "",
+              position: i + 1,
+          }))
+        : [];
+    return {
+        searchParameters: {
+            q: String(query || ""),
+            gl: "in",
+            type: "search",
+            engine: "google",
+        },
+        knowledgeGraph: {},
+        organic,
+        topStories: [],
+        relatedSearches: [],
+    };
 }
 
 // Memory Tools
@@ -1263,13 +1469,19 @@ ${memoryStrings}
 
             for (const toolCall of agentResponse.tool_calls) {
                 const { name, arguments: args } = toolCall.function;
+                let parsedArgs = {};
+                try {
+                    parsedArgs = JSON.parse(args || "{}");
+                } catch (_) {
+                    parsedArgs = {};
+                }
+
                 addMessageToUI(
                     `⚙️ Using tool: <strong>${name}</strong>`,
                     "tool",
                 );
                 let toolOutput;
                 try {
-                    const parsedArgs = JSON.parse(args || "{}");
                     if (name === "callAIPipe") {
                         toolOutput = await availableTools[name](
                             parsedArgs.pipeline,
@@ -1285,16 +1497,100 @@ ${memoryStrings}
                         error: `Failed to execute tool ${name}: ${e?.message || e}`,
                     });
                 }
-                conversationHistory.push({
+                const toolMessage = {
                     tool_call_id: toolCall.id,
                     role: "tool",
                     name,
                     content: toolOutput,
-                });
+                };
+
+                if (name === "googleSearch" && parsedArgs?.query) {
+                    toolMessage.meta = { query: parsedArgs.query };
+                } else if (name === "executeJavaScript") {
+                    toolMessage.meta = { code: parsedArgs?.code || "" };
+                }
+
+                try {
+                    pendingPreviewPayloads.push({
+                        name,
+                        parsedArgs,
+                        toolOutput,
+                    });
+                } catch (_) {}
+                conversationHistory.push(toolMessage);
                 saveAllChats();
             }
             await runConversation();
         } else {
+            try {
+                const reversed = [...pendingPreviewPayloads].reverse();
+                const lastGoogle = reversed.find(
+                    (p) => p.name === "googleSearch",
+                );
+                if (lastGoogle && lastGoogle.parsedArgs?.query) {
+                    try {
+                        const simplified = JSON.parse(lastGoogle.toolOutput);
+                        const payload = buildGoogleMockData(
+                            lastGoogle.parsedArgs.query,
+                            simplified,
+                        );
+                        localStorage.setItem(
+                            "lastGoogleSearchPayload",
+                            JSON.stringify(payload),
+                        );
+                    } catch (_) {}
+
+                    const idx = [...conversationHistory]
+                        .map((m, i) => ({ m, i }))
+                        .reverse()
+                        .find(
+                            (x) =>
+                                x.m.role === "tool" &&
+                                x.m.name === "googleSearch",
+                        )?.i;
+                    if (idx !== undefined) {
+                        conversationHistory[idx].meta = {
+                            query: lastGoogle.parsedArgs.query,
+                        };
+                    }
+                }
+
+                const lastJs = reversed.find(
+                    (p) => p.name === "executeJavaScript",
+                );
+                if (lastJs) {
+                    try {
+                        const out = JSON.parse(lastJs.toolOutput);
+                        const payload = {
+                            code: lastJs.parsedArgs?.code || "",
+                            result: out?.result ?? null,
+                            error: out?.error ?? null,
+                            logs: out?.logs ?? [],
+                        };
+                        localStorage.setItem(
+                            "lastJsExecPayload",
+                            JSON.stringify(payload),
+                        );
+                    } catch (_) {}
+                    const idx = [...conversationHistory]
+                        .map((m, i) => ({ m, i }))
+                        .reverse()
+                        .find(
+                            (x) =>
+                                x.m.role === "tool" &&
+                                x.m.name === "executeJavaScript",
+                        )?.i;
+                    if (idx !== undefined) {
+                        conversationHistory[idx].meta = {
+                            code: lastJs.parsedArgs?.code || "",
+                        };
+                    }
+                }
+            } catch (_) {}
+            pendingPreviewPayloads = [];
+            saveAllChats();
+
+            await displayHistory();
             toggleLoading(false);
             updateChatList();
         }
@@ -1422,7 +1718,7 @@ function addMessageToUI(content, role) {
         m.className = `message ${role}-message`;
         if (role === "user") {
             m.innerHTML = DOMPurify.sanitize(
-                marked.parse(content, { breaks: true })
+                marked.parse(content, { breaks: true }),
             );
         } else {
             m.innerHTML = content;
@@ -1610,72 +1906,107 @@ document.getElementById("data-tab").addEventListener("click", () => {
 });
 
 // AI Pipe quick tests
-document.getElementById("aipipeTestUsageBtn")?.addEventListener("click", async () => {
-    const res = await callAIPipe("usage");
-    try {
-        const parsed = JSON.parse(res);
-        bootstrapAlert({
-            title: "AI Pipe /usage",
-            body: `<pre class=\"mb-0\"><code>${DOMPurify.sanitize(JSON.stringify(parsed, null, 2))}</code></pre>`,
-            color: parsed.error ? "danger" : "success",
-        });
-    } catch {
-        bootstrapAlert({ title: "AI Pipe /usage", body: String(res), color: "danger" });
-    }
-});
+document
+    .getElementById("aipipeTestUsageBtn")
+    ?.addEventListener("click", async () => {
+        const res = await callAIPipe("usage");
+        try {
+            const parsed = JSON.parse(res);
+            bootstrapAlert({
+                title: "AI Pipe /usage",
+                body: `<pre class=\"mb-0\"><code>${DOMPurify.sanitize(JSON.stringify(parsed, null, 2))}</code></pre>`,
+                color: parsed.error ? "danger" : "success",
+            });
+        } catch {
+            bootstrapAlert({
+                title: "AI Pipe /usage",
+                body: String(res),
+                color: "danger",
+            });
+        }
+    });
 
-document.getElementById("aipipeTestProxyBtn")?.addEventListener("click", async () => {
-    const res = await callAIPipe("proxy:https://httpbin.org/get?hello=world");
-    try {
-        const parsed = JSON.parse(res);
-        bootstrapAlert({
-            title: "AI Pipe Proxy",
-            body: `<pre class=\"mb-0\"><code>${DOMPurify.sanitize(JSON.stringify(parsed, null, 2))}</code></pre>`,
-            color: parsed.error ? "danger" : "success",
-        });
-    } catch {
-        bootstrapAlert({ title: "AI Pipe Proxy", body: String(res), color: "danger" });
-    }
-});
+document
+    .getElementById("aipipeTestProxyBtn")
+    ?.addEventListener("click", async () => {
+        const res = await callAIPipe(
+            "proxy:https://httpbin.org/get?hello=world",
+        );
+        try {
+            const parsed = JSON.parse(res);
+            bootstrapAlert({
+                title: "AI Pipe Proxy",
+                body: `<pre class=\"mb-0\"><code>${DOMPurify.sanitize(JSON.stringify(parsed, null, 2))}</code></pre>`,
+                color: parsed.error ? "danger" : "success",
+            });
+        } catch {
+            bootstrapAlert({
+                title: "AI Pipe Proxy",
+                body: String(res),
+                color: "danger",
+            });
+        }
+    });
 
 // Serper quick test
-document.getElementById("serperTestBtn")?.addEventListener("click", async () => {
-    try {
-        const res = await googleSearch("OpenAI");
-        const parsed = JSON.parse(res);
-        bootstrapAlert({
-            title: "Serper Search",
-            body: `<pre class=\"mb-0\"><code>${DOMPurify.sanitize(JSON.stringify(parsed, null, 2))}</code></pre>`,
-            color: parsed.error ? "danger" : "success",
-        });
-    } catch (e) {
-        bootstrapAlert({ title: "Serper Search", body: String(e?.message || e), color: "danger" });
-    }
-});
+document
+    .getElementById("serperTestBtn")
+    ?.addEventListener("click", async () => {
+        try {
+            const res = await googleSearch("OpenAI");
+            const parsed = JSON.parse(res);
+            bootstrapAlert({
+                title: "Serper Search",
+                body: `<pre class=\"mb-0\"><code>${DOMPurify.sanitize(JSON.stringify(parsed, null, 2))}</code></pre>`,
+                color: parsed.error ? "danger" : "success",
+            });
+        } catch (e) {
+            bootstrapAlert({
+                title: "Serper Search",
+                body: String(e?.message || e),
+                color: "danger",
+            });
+        }
+    });
 
 // Provider quick test
-document.getElementById("providerTestModelsBtn")?.addEventListener("click", async () => {
-    try {
-        const baseUrl = (settings.baseUrl || "").replace(/\/$/, "");
-        const apiKey = settings.apiKey || "";
-        if (!baseUrl || !apiKey) {
-            bootstrapAlert({ title: "Provider Test", body: "Please set both API Base URL and LLM Provider API Key in Settings.", color: "warning" });
-            return;
+document
+    .getElementById("providerTestModelsBtn")
+    ?.addEventListener("click", async () => {
+        try {
+            const baseUrl = (settings.baseUrl || "").replace(/\/$/, "");
+            const apiKey = settings.apiKey || "";
+            if (!baseUrl || !apiKey) {
+                bootstrapAlert({
+                    title: "Provider Test",
+                    body: "Please set both API Base URL and LLM Provider API Key in Settings.",
+                    color: "warning",
+                });
+                return;
+            }
+            const resp = await fetch(`${baseUrl}/models`, {
+                headers: { Authorization: `Bearer ${apiKey}` },
+            });
+            const contentType = resp.headers.get("content-type") || "";
+            let out;
+            if (contentType.includes("application/json"))
+                out = await resp.json();
+            else out = { text: await resp.text() };
+            bootstrapAlert({
+                title: resp.ok
+                    ? "Provider /models"
+                    : `Provider Error (${resp.status})`,
+                body: `<pre class=\"mb-0\"><code>${DOMPurify.sanitize(JSON.stringify(out, null, 2))}</code></pre>`,
+                color: resp.ok ? "success" : "danger",
+            });
+        } catch (e) {
+            bootstrapAlert({
+                title: "Provider Test",
+                body: String(e?.message || e),
+                color: "danger",
+            });
         }
-        const resp = await fetch(`${baseUrl}/models`, { headers: { Authorization: `Bearer ${apiKey}` } });
-        const contentType = resp.headers.get("content-type") || "";
-        let out;
-        if (contentType.includes("application/json")) out = await resp.json();
-        else out = { text: await resp.text() };
-        bootstrapAlert({
-            title: resp.ok ? "Provider /models" : `Provider Error (${resp.status})`,
-            body: `<pre class=\"mb-0\"><code>${DOMPurify.sanitize(JSON.stringify(out, null, 2))}</code></pre>`,
-            color: resp.ok ? "success" : "danger",
-        });
-    } catch (e) {
-        bootstrapAlert({ title: "Provider Test", body: String(e?.message || e), color: "danger" });
-    }
-});
+    });
 
 function toggleLoading(isLoading) {
     const btn = document.getElementById("submit-button");

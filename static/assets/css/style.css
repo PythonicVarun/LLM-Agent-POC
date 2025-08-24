@@ -413,7 +413,6 @@ html {
 }
 
 @media only screen and (max-width: 767px) {
-
     /* Slightly thinner scrollbars on small screens */
     ::-webkit-scrollbar {
         width: 6px;

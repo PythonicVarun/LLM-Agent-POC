@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>JS Execution Results</title>
+        <style>
+            body {
+                margin: 0;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    Segoe UI,
+                    Roboto,
+                    Ubuntu,
+                    Cantarell,
+                    Noto Sans,
+                    sans-serif;
+                background: #0f172a;
+                color: #e2e8f0;
+            }
+            header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 16px;
+                border-bottom: 1px solid #1f2937;
+            }
+            h1 {
+                font-size: 16px;
+                margin: 0;
+            }
+            .container {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 16px;
+                padding: 16px;
+            }
+            .panel {
+                background: #111827;
+                border: 1px solid #1f2937;
+                border-radius: 10px;
+                overflow: hidden;
+            }
+            .panel header {
+                background: #0b1220;
+                border-bottom: 1px solid #1f2937;
+                padding: 10px 12px;
+            }
+            .panel h2 {
+                font-size: 14px;
+                margin: 0;
+                color: #93c5fd;
+            }
+            pre {
+                margin: 0;
+                padding: 12px;
+                overflow: auto;
+                white-space: pre;
+            }
+            code {
+                font-family:
+                    ui-monospace,
+                    SFMono-Regular,
+                    Menlo,
+                    Monaco,
+                    Consolas,
+                    Liberation Mono,
+                    monospace;
+                font-size: 13px;
+            }
+            .tag {
+                display: inline-block;
+                padding: 2px 8px;
+                border-radius: 999px;
+                font-size: 12px;
+                background: #1f2937;
+                color: #93c5fd;
+                border: 1px solid #374151;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1>JavaScript Execution — Sandbox Output</h1>
+            <span class="tag" id="statusTag">ready</span>
+        </header>
+        <div class="container">
+            <section class="panel" id="codePanel">
+                <header><h2>Code</h2></header>
+                <pre><code id="codeBlock">// code will appear here</code></pre>
+            </section>
+            <section class="panel" id="resultPanel">
+                <header><h2>Result</h2></header>
+                <pre><code id="resultBlock">// result will appear here</code></pre>
+            </section>
+            <section class="panel" id="logsPanel">
+                <header><h2>Console Logs</h2></header>
+                <pre><code id="logsBlock">// logs will appear here</code></pre>
+            </section>
+        </div>
+
+        <script>
+            function decodeDataParam() {
+                try {
+                    const params = new URLSearchParams(window.location.search);
+                    const data = params.get("data");
+                    if (!data) return null;
+                    const json = atob(decodeURIComponent(data));
+                    return JSON.parse(json);
+                } catch (e) {
+                    console.warn("Failed to parse data param:", e);
+                    return null;
+                }
+            }
+
+            function render(payload) {
+                const codeBlock = document.getElementById("codeBlock");
+                const resultBlock = document.getElementById("resultBlock");
+                const logsBlock = document.getElementById("logsBlock");
+                const status = document.getElementById("statusTag");
+
+                const code = payload?.code ?? "";
+                const result = payload?.result ?? null;
+                const error = payload?.error ?? null;
+                const logs = Array.isArray(payload?.logs) ? payload.logs : [];
+
+                codeBlock.textContent =
+                    String(code || "").trim() || "// (empty)";
+
+                if (error) {
+                    status.textContent = "error";
+                    status.style.color = "#fca5a5";
+                    status.style.borderColor = "#ef4444";
+                    status.style.background = "#451a1a";
+                    resultBlock.textContent =
+                        typeof error === "string"
+                            ? error
+                            : JSON.stringify(error, null, 2);
+                } else {
+                    status.textContent = "success";
+                    status.style.color = "#86efac";
+                    status.style.borderColor = "#22c55e";
+                    status.style.background = "#052e1a";
+                    resultBlock.textContent =
+                        typeof result === "string"
+                            ? result
+                            : JSON.stringify(result, null, 2);
+                }
+
+                if (logs.length === 0) {
+                    logsBlock.textContent = "// (no logs)";
+                } else {
+                    const printable = logs
+                        .map((l) => {
+                            const args = Array.isArray(l.args)
+                                ? l.args
+                                : [l.args];
+                            return (
+                                `[${l.level}] ` +
+                                args
+                                    .map((a) =>
+                                        typeof a === "string"
+                                            ? a
+                                            : JSON.stringify(a),
+                                    )
+                                    .join(" ")
+                            );
+                        })
+                        .join("\n");
+                    logsBlock.textContent = printable;
+                }
+            }
+
+            document.addEventListener("DOMContentLoaded", () => {
+                const payload = decodeDataParam();
+                if (payload) {
+                    render(payload);
+                } else {
+                    render({
+                        code: "",
+                        result: null,
+                        logs: [],
+                        error: "No data provided",
+                    });
+                }
+            });
+        </script>
+    </body>
+</html>
