@@ -39,16 +39,7 @@ const clearAllChatsBtn = document.getElementById("clearAllChatsBtn");
 const totalChatsCount = document.getElementById("totalChatsCount");
 const storageUsed = document.getElementById("storageUsed");
 
-const systemPrompt = {
-    role: "system",
-    content: `You are a helpful, tool-using AI assistant for a browser chat app.
-
-Primary goals:
-- Be concise, accurate, and actionable.
-- Use Markdown for formatting (headings, bullets, tables, code fences).
-- Prefer step-by-step clarity without fluff.
-
-Tools available:
+const TOOLS_INSTRUCTIONS = `Tools available:
 - googleSearch(query: string)
     - Use for up-to-date facts, current events, statistics, or when you are uncertain.
     - After using it, cite the top 1-3 relevant sources as Markdown links.
@@ -75,19 +66,32 @@ Tool-use protocol:
 - Call a tool only when it will materially improve the answer.
 - Provide minimal, correct arguments. Never fabricate data or URLs.
 - After tool results return, integrate them into your final answer with citations.
-- Do not print tool-call JSON or internal IDs in your answer.
+- Do not print tool-call JSON or internal IDs in your answer.`;
+
+const SYSTEM_PROMPT_TEMPLATE = `You are a helpful, tool-using AI assistant for a browser chat app.
+
+Primary goals:
+- Be concise, accurate, and actionable.
+- Use Markdown for formatting (headings, bullets, tables, code fences).
+- Prefer step-by-step clarity without fluff.
+
+{0}
 
 Style and limits:
 - Keep responses short and impersonal. Avoid filler.
 - Use fenced code blocks with language tags for code.
-- If search is unavailable (e.g., missing API key) or a tool errors, say so briefly and proceed with best-effort reasoning.
+{1}
 
 Safety:
 - Protect privacy; never request or reveal secrets or API keys.
 
 Identity:
 - Your Name: Anveshak.
-- Your Developer: Varun Agnihotri <@PythonicVarun, code@pythonicvarun.me>`,
+- Your Developer: Varun Agnihotri <@PythonicVarun, code@pythonicvarun.me>`;
+
+const systemPrompt = {
+    role: "system",
+    content: SYSTEM_PROMPT_TEMPLATE,
 };
 
 let conversationHistory = [];
@@ -98,6 +102,12 @@ let chatToRename = null;
 let chatToDelete = null;
 let isDraftChat = false;
 let pendingPreviewPayloads = [];
+
+function format(str, ...values) {
+    return str.replace(/{(\d+)}/g, function(match, index) {
+        return typeof values[index] !== 'undefined' ? values[index] : match;
+    });
+}
 
 function scrollToBottom(smooth = false) {
     const messages = chatWindow.querySelectorAll("div");
@@ -712,6 +722,12 @@ apiModelEl.addEventListener("change", () => {
 toolsEnabledSwitch.addEventListener("change", () => {
     settings.toolsEnabled = toolsEnabledSwitch.checked;
     saveSettings();
+
+    systemPrompt.content = format(
+        SYSTEM_PROMPT_TEMPLATE,
+        settings.toolsEnabled ? TOOLS_INSTRUCTIONS : "",
+        settings.toolsEnabled ? "- If search is unavailable (e.g., missing API key) or a tool errors, say so briefly and proceed with best-effort reasoning." : ""
+    )
 });
 
 // Tools
@@ -2092,6 +2108,12 @@ loadSettings();
 loadAllChats();
 displayHistory();
 toggleLoading(false);
+
+systemPrompt.content = format(
+    SYSTEM_PROMPT_TEMPLATE,
+    settings.toolsEnabled ? TOOLS_INSTRUCTIONS : "",
+    settings.toolsEnabled ? "- If search is unavailable (e.g., missing API key) or a tool errors, say so briefly and proceed with best-effort reasoning." : ""
+)
 
 window.switchToChat = switchToChat;
 window.renameChat = renameChat;
